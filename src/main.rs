@@ -1,8 +1,9 @@
-use lexer::Lexer;
+use repl::Repl;
 
 mod lexer;
+mod repl;
 
 fn main() {
-    let lexer = Lexer::new("let res = 123 + 100 / fn(x)");
-    lexer.tokens().for_each(|token| println!("{}", token));
+    println!("monke go");
+    Repl::start();
 }
