@@ -17,6 +17,7 @@ impl Repl {
                 }
                 Err(_) => break,
             }
+            buffer.clear();
         }
     }
 }
