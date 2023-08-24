@@ -1,5 +1,3 @@
-use std::str;
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum Token<'a> {
     Illegal,
@@ -90,7 +88,7 @@ impl<'a> Tokens<'a> {
         loop {
             match self.ch {
                 Some(c) => match c {
-                    (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => (),
+                    (b'0'..=b'9') | (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => (),
                     _ => break,
                 },
                 None => break,
