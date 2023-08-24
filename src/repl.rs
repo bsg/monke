@@ -13,7 +13,7 @@ impl Repl {
                 Ok(_) => {
                     Lexer::new(buffer.as_str())
                         .tokens()
-                        .for_each(|token| println!("    {}", token));
+                        .for_each(|token| println!("    {:?}", token));
                 }
                 Err(_) => break,
             }
