@@ -29,20 +29,68 @@ impl<'a> Parser<'a> {
     }
 
     // TODO remember to make this non pub
-    pub fn parse_statement(&mut self) -> Option<Statement<'a>> {
+    // pub fn parse_block(&mut self) -> Option<BlockStatement> {
+    //     let mut statements: Vec<Rc<Statement>> = Vec::new();
+    //     match self.tokens.peek() {
+    //         Some(Token::LBrace) => {
+    //             loop {
+    //                 match self.parse_statement() {
+    //                     Some(stmt) => statements.push(stmt),
+    //                     None => break,
+    //                 }
+    //             }
+    //             assert_eq!(self.curr_token, Some(Token::RBrace));
+    //             Some(BlockStatement { statements })
+    //         }
+    //         Some(_) => todo!(),
+    //         None => None,
+    //     }
+    // }
+
+    // TODO remember to make this non pub
+    pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
         match self.tokens.peek() {
             Some(token) => match token {
                 Token::Let => {
                     self.next_token();
-                    Some(Statement::Let(self.parse_expression(0)))
-                },
+                    self.next_token();
+                    match self.curr_token {
+                        Some(Token::Ident(ident)) => {
+                            self.next_token();
+                            match self.curr_token {
+                                Some(Token::Assign) => Rc::from(Some(Node {
+                                    kind: NodeKind::Let,
+                                    left: self.parse_ident(ident),
+                                    right: self.parse_expression(0),
+                                })),
+                                _ => todo!(),
+                            }
+                        }
+                        _ => todo!(),
+                    }
+                }
                 Token::Return => {
                     self.next_token();
-                    Some(Statement::Return(self.parse_expression(0)))
-                },
-                _ => Some(Statement::Expr(self.parse_expression(0))),
+                    Rc::from(Some(Node {
+                        kind: NodeKind::Return,
+                        left: None.into(),
+                        right: self.parse_expression(0),
+                    }))
+                }
+                _ => self.parse_expression(0),
             },
-            None => None,
+            None => None.into(),
+        }
+    }
+
+    fn parse_ident(&self, name: &'a [u8]) -> Rc<Option<Node<'a>>> {
+        match str::from_utf8(name) {
+            Ok(name) => Rc::from(Some(Node {
+                kind: NodeKind::Ident(name),
+                left: None.into(),
+                right: None.into(),
+            })),
+            Err(_) => todo!(),
         }
     }
 
@@ -67,14 +115,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             // IDENT
-            Some(Token::Ident(name)) => match str::from_utf8(name) {
-                Ok(name) => Rc::from(Some(Node {
-                    kind: NodeKind::Ident(name),
-                    left: None.into(),
-                    right: None.into(),
-                })),
-                Err(_) => todo!(),
-            },
+            Some(Token::Ident(name)) => self.parse_ident(name),
             // TRUE
             Some(Token::True) => Rc::from(Some(Node {
                 kind: NodeKind::Bool(true),
@@ -154,7 +195,7 @@ impl<'a> Parser<'a> {
 
 mod tests {
     use super::*;
-    // todo make these easier to write
+
     #[test]
     fn int_literal() {
         let input = "453;";
@@ -331,4 +372,50 @@ mod tests {
         let mut parser = Parser::new(input);
         assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
+
+    #[test]
+    fn let_statement() {
+        let input = "let x = 1 + 2";
+        let expected = "Some(\
+            Let\n\
+            -Ident(\"x\")\n\
+            -Op(Add)\n\
+            --Int(1)\n\
+            --Int(2)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", parser.parse_statement()), expected);
+    }
+
+    #[test]
+    fn return_statement() {
+        let input = "return 1 + 2";
+        let expected = "Some(\
+            Return\n\
+            -Op(Add)\n\
+            --Int(1)\n\
+            --Int(2)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", parser.parse_statement()), expected);
+    }
+
+    // #[test]
+    // fn block_statement() {
+    //     let input = "{1 + 2;3 + 4}";
+    //     let expected = "Some(\
+    //         {\n\
+    //         [expr]\n\
+    //         -Op(Add)\n\
+    //         --Int(1)\n\
+    //         --Int(2)\n\
+    //         [expr]\n\
+    //         -Op(Add)\n\
+    //         --Int(3)\n\
+    //         --Int(4)\n\
+    //         }\n\
+    //     )";
+    //     let mut parser = Parser::new(input);
+    //     assert_eq!(format!("{:?}", parser.parse_block()), expected);
+    // }
 }
