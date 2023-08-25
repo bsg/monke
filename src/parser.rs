@@ -28,9 +28,9 @@ impl<'a> Parser<'a> {
         };
     }
 
-    // TODO remember to make this non pub
-    // pub fn parse_block(&mut self) -> Option<BlockStatement> {
-    //     let mut statements: Vec<Rc<Statement>> = Vec::new();
+    //TODO remember to make this non pub
+    // pub fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
+    //     let mut statements: Vec<Rc<Option<Node<'a>>>> = Vec::new();
     //     match self.tokens.peek() {
     //         Some(Token::LBrace) => {
     //             loop {
