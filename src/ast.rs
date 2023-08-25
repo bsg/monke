@@ -2,6 +2,7 @@ use std::{fmt, rc::Rc};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Op {
+    Assign,
     Eq,
     NotEq,
     Lt,
@@ -42,17 +43,11 @@ pub struct Node<'a> {
     pub right: Rc<Option<Node<'a>>>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum StatementKind {
-    Let,
-    Return,
-    Expr,
-}
-
 #[derive(PartialEq, Eq)]
-pub struct Statement<'a> {
-    pub kind: StatementKind,
-    pub root: Rc<Node<'a>>,
+pub enum Statement<'a> {
+    Let(Rc<Option<Node<'a>>>),
+    Return(Rc<Option<Node<'a>>>),
+    Expr(Rc<Option<Node<'a>>>),
 }
 
 impl fmt::Debug for Node<'_> {
@@ -81,6 +76,10 @@ impl fmt::Debug for Node<'_> {
 
 impl fmt::Debug for Statement<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_fmt(format_args!("[{:?}]\n{:?}", self.kind, self.root))
+        match self {
+            Statement::Let(expr) => f.write_fmt(format_args!("[Let]\n{:?}", expr)),
+            Statement::Return(expr) => f.write_fmt(format_args!("[Return]\n{:?}", expr)),
+            Statement::Expr(expr) => f.write_fmt(format_args!("[Expr]\n{:?}", expr)),
+        }
     }
 }

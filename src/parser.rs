@@ -28,30 +28,26 @@ impl<'a> Parser<'a> {
         };
     }
 
-    // fn parse_statement(&mut self) -> Statement<'a> {
-    //     match self.tokens.next() {
-    //         Some(token) => match token {
-    //             Token::Let => Statement {
-    //                 kind: StatementKind::Let,
-    //                 root: todo!(),
-    //             },
-    //             Token::Return => Statement {
-    //                 kind: StatementKind::Return,
-    //                 root: todo!(),
-    //             },
-    //             _ => Statement {
-    //                 kind: StatementKind::Expr,
-    //                 root: todo!(),
-    //             },
-    //         },
-    //         None => todo!(),
-    //     }
-    // }
-
     // TODO remember to make this non pub
-    pub fn parse_expression(&mut self, precedence: i32) -> Rc<Option<Node<'a>>> {
-        self.next_token();
+    pub fn parse_statement(&mut self) -> Option<Statement<'a>> {
+        match self.tokens.peek() {
+            Some(token) => match token {
+                Token::Let => {
+                    self.next_token();
+                    Some(Statement::Let(self.parse_expression(0)))
+                },
+                Token::Return => {
+                    self.next_token();
+                    Some(Statement::Return(self.parse_expression(0)))
+                },
+                _ => Some(Statement::Expr(self.parse_expression(0))),
+            },
+            None => None,
+        }
+    }
 
+    fn parse_expression(&mut self, precedence: i32) -> Rc<Option<Node<'a>>> {
+        self.next_token();
         let mut lhs = match self.curr_token {
             // these are prefix...
             // INT
@@ -119,6 +115,7 @@ impl<'a> Parser<'a> {
                     let op = match self.peek_token {
                         Some(Token::Eof) => break,
                         None => break,
+                        Some(Token::Assign) => Some(Op::Assign),
                         Some(Token::Plus) => Some(Op::Add),
                         Some(Token::Minus) => Some(Op::Sub),
                         Some(Token::Asterisk) => Some(Op::Mul),
@@ -205,6 +202,18 @@ mod tests {
         let expected = "Some(\
             Op(Not)\n\
             -Bool(false)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+    }
+
+    #[test]
+    fn op_assign() {
+        let input = "x = 2";
+        let expected = "Some(\
+            Op(Assign)\n\
+            -Ident(\"x\")\n\
+            -Int(2)\n\
         )";
         let mut parser = Parser::new(input);
         assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
