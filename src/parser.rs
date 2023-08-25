@@ -74,19 +74,27 @@ impl<'a> Parser<'a> {
                         left: None,
                         right: None,
                     }))
-                }
+                },
                 Token::Ident(name) => {
-                    let name = match str::from_utf8(name) {
-                        Ok(s) => s,
+                    match str::from_utf8(name) {
+                        Ok(s) => Some(Rc::from(Node {
+                            kind: NodeKind::Ident(s),
+                            left: None,
+                            right: None,
+                        })),
                         Err(_) => panic!(),
-                    };
-
-                    Some(Rc::from(Node {
-                        kind: NodeKind::Ident(&name),
-                        left: None,
-                        right: None,
-                    }))
-                }
+                    }
+                },
+                Token::True => Some(Rc::from(Node {
+                    kind: NodeKind::Bool(true),
+                    left: None,
+                    right: None,
+                })),
+                Token::True => Some(Rc::from(Node {
+                    kind: NodeKind::Bool(false),
+                    left: None,
+                    right: None,
+                })),
                 Token::Minus => match left {
                     Some(_) => Some(Rc::from(Node {
                         kind: NodeKind::Op(Op::Sub),
@@ -166,6 +174,18 @@ mod tests {
         let input = "__var_12;";
         let expected = Node {
             kind: NodeKind::Ident("__var_12"),
+            left: None,
+            right: None,
+        };
+        let mut parser = Parser::new(input);
+        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+    }
+
+    #[test]
+    fn bool() {
+        let input = "true";
+        let expected = Node {
+            kind: NodeKind::Bool(true),
             left: None,
             right: None,
         };
