@@ -157,192 +157,118 @@ mod tests {
     #[test]
     fn int_literal() {
         let input = "453;";
-        let expected = Node {
-            kind: NodeKind::Int(453),
-            left: None.into(),
-            right: None.into(),
-        };
+        let expected = "Some(\
+            Int(453)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn ident() {
         let input = "__var_12;";
-        let expected = Node {
-            kind: NodeKind::Ident("__var_12"),
-            left: None.into(),
-            right: None.into(),
-        };
+        let expected = "Some(\
+            Ident(\"__var_12\")\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn bool() {
         let input = "true";
-        let expected = Node {
-            kind: NodeKind::Bool(true),
-            left: None.into(),
-            right: None.into(),
-        };
+        let expected = "Some(\
+            Bool(true)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_neg() {
         let input = "-12;";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Neg),
-            left: None.into(),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Int(12),
-                left: None.into(),
-                right: None.into(),
-            })),
-        };
+        let expected = "Some(\
+            Op(Neg)\n\
+            -Int(12)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_not() {
-        let input = "!1;";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Not),
-            left: None.into(),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Int(1),
-                left: None.into(),
-                right: None.into(),
-            })),
-        };
+        let input = "!false;";
+        let expected = "Some(\
+            Op(Not)\n\
+            -Bool(false)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_add() {
         let input = "6 + 2";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Add),
-            left: Rc::from(Some(Node {
-                kind: NodeKind::Int(6),
-                left: None.into(),
-                right: None.into(),
-            })),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Int(2),
-                left: None.into(),
-                right: None.into(),
-            })),
-        };
+        let expected = "Some(\
+            Op(Add)\n\
+            -Int(6)\n\
+            -Int(2)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_sub() {
         let input = "6 - 2";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Sub),
-            left: Rc::from(Some(Node {
-                kind: NodeKind::Int(6),
-                left: None.into(),
-                right: None.into(),
-            })),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Int(2),
-                left: None.into(),
-                right: None.into(),
-            })),
-        };
+        let expected = "Some(\
+            Op(Sub)\n\
+            -Int(6)\n\
+            -Int(2)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_mul() {
         let input = "6 * 2";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Mul),
-            left: Rc::from(Some(Node {
-                kind: NodeKind::Int(6),
-                left: None.into(),
-                right: None.into(),
-            })),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Int(2),
-                left: None.into(),
-                right: None.into(),
-            })),
-        };
+        let expected = "Some(\
+            Op(Mul)\n\
+            -Int(6)\n\
+            -Int(2)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_div() {
         let input = "6 / 2";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Div),
-            left: Rc::from(Some(Node {
-                kind: NodeKind::Int(6),
-                left: None.into(),
-                right: None.into(),
-            })),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Int(2),
-                left: None.into(),
-                right: None.into(),
-            })),
-        };
+        let expected = "Some(\
+            Op(Div)\n\
+            -Int(6)\n\
+            -Int(2)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 
     #[test]
     fn op_precedence() {
-        let input = "1 + 2 * 3 - 4 / 5";
-        let expected = Node {
-            kind: NodeKind::Op(Op::Add),
-            left: Rc::from(Some(Node {
-                kind: NodeKind::Int(1),
-                left: None.into(),
-                right: None.into(),
-            })),
-            right: Rc::from(Some(Node {
-                kind: NodeKind::Op(Op::Sub),
-                left: Rc::from(Some(Node {
-                    kind: NodeKind::Op(Op::Mul),
-                    left: Rc::from(Some(Node {
-                        kind: NodeKind::Int(2),
-                        left: None.into(),
-                        right: None.into(),
-                    })),
-                    right: Rc::from(Some(Node {
-                        kind: NodeKind::Int(3),
-                        left: None.into(),
-                        right: None.into(),
-                    })),
-                })),
-                right: Rc::from(Some(Node {
-                    kind: NodeKind::Op(Op::Div),
-                    left: Rc::from(Some(Node {
-                        kind: NodeKind::Int(4),
-                        left: None.into(),
-                        right: None.into(),
-                    })),
-                    right: Rc::from(Some(Node {
-                        kind: NodeKind::Int(5),
-                        left: None.into(),
-                        right: None.into(),
-                    })),
-                })),
-            })),
-        };
+        let input = "1 + 2 * (3 - 4) / 5";
+        let expected = "Some(\
+            Op(Add)\n\
+            -Int(1)\n\
+            -Op(Mul)\n\
+            --Int(2)\n\
+            --Op(Div)\n\
+            ---Op(Sub)\n\
+            ----Int(3)\n\
+            ----Int(4)\n\
+            ---Int(5)\n\
+        )";
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(0), Some(expected));
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
     }
 }

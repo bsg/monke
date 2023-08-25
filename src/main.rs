@@ -1,9 +1,9 @@
 use repl::Repl;
 
+mod parser;
 mod lexer;
 mod repl;
 mod ast;
-mod parser;
 
 fn main() {
     println!("monke go");
