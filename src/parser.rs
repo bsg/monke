@@ -123,6 +123,10 @@ impl<'a> Parser<'a> {
                         Some(Token::Minus) => Some(Op::Sub),
                         Some(Token::Asterisk) => Some(Op::Mul),
                         Some(Token::Slash) => Some(Op::Div),
+                        Some(Token::Eq) => Some(Op::Eq),
+                        Some(Token::NotEq) => Some(Op::NotEq),
+                        Some(Token::Lt) => Some(Op::Lt),
+                        Some(Token::Gt) => Some(Op::Gt),
                         _ => None,
                     };
 
@@ -249,6 +253,53 @@ mod tests {
             Op(Div)\n\
             -Int(6)\n\
             -Int(2)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+    }
+
+    #[test]
+    fn op_eq() {
+        let input = "5 == 5";
+        let expected = "Some(\
+            Op(Eq)\n\
+            -Int(5)\n\
+            -Int(5)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+    }
+
+    #[test]
+    fn op_not_eq() {
+        let input = "5 != 5";
+        let expected = "Some(\
+            Op(NotEq)\n\
+            -Int(5)\n\
+            -Int(5)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+    }
+    #[test]
+    fn op_lt() {
+        let input = "5 < 5";
+        let expected = "Some(\
+            Op(Lt)\n\
+            -Int(5)\n\
+            -Int(5)\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+    }
+
+    #[test]
+    fn op_gt() {
+        let input = "5 > 5";
+        let expected = "Some(\
+            Op(Gt)\n\
+            -Int(5)\n\
+            -Int(5)\n\
         )";
         let mut parser = Parser::new(input);
         assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
