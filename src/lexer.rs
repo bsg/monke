@@ -1,7 +1,7 @@
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token<'a> {
     Illegal,
-    EOF,
+    Eof,
     Ident(&'a [u8]),
     Int(&'a [u8]),
 
@@ -33,22 +33,6 @@ pub enum Token<'a> {
     If,
     Else,
     Return,
-}
-
-impl Token<'_> {
-    pub fn precedence(&self) -> i32 {
-        match self {
-            Token::Eq => 1,
-            Token::NotEq => 1,
-            Token::Lt => 2,
-            Token::Gt => 2,
-            Token::Plus => 3,
-            Token::Minus => 3,
-            Token::Asterisk => 4,
-            Token::Slash => 4,
-            _ => 0,
-        }
-    }
 }
 
 impl std::fmt::Display for Token<'_> {
@@ -160,7 +144,7 @@ impl<'a> Tokens<'a> {
             Some(b'}') => RBrace,
             Some(b',') => Comma,
             Some(b';') => Semicolon,
-            None => EOF,
+            None => Eof,
             Some(c) => match c {
                 (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
                     let ident = self.read_identifier();
@@ -192,7 +176,7 @@ impl<'a> Iterator for Tokens<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let tok = self.next_token();
         match tok {
-            Token::EOF => None,
+            Token::Eof => None,
             _ => Some(tok),
         }
     }

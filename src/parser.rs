@@ -49,124 +49,84 @@ impl<'a> Parser<'a> {
     // }
 
     // TODO remember to make this non pub
-    pub fn parse_expression(
-        &mut self,
-        left: Option<Rc<Node<'a>>>,
-        precedence: i32,
-    ) -> Option<Rc<Node<'a>>> {
-        let mut node: Option<Rc<Node>> = None;
-
+    pub fn parse_expression(&mut self, precedence: i32) -> Rc<Option<Node<'a>>> {
         self.next_token();
 
-        node = match self.curr_token {
-            Some(token) => match token {
-                Token::Int(s) => {
-                    let i = match str::from_utf8(s) {
-                        Ok(s) => match s.parse() {
-                            Ok(i) => i,
-                            Err(_) => panic!(),
-                        },
+        let mut lhs = match self.curr_token {
+            // these are prefix...
+            Some(Token::Int(s)) => {
+                let i = match str::from_utf8(s) {
+                    Ok(s) => match s.parse() {
+                        Ok(i) => i,
                         Err(_) => panic!(),
-                    };
+                    },
+                    Err(_) => panic!(),
+                };
 
-                    Some(Rc::from(Node {
-                        kind: NodeKind::Int(i),
-                        left: None,
-                        right: None,
-                    }))
-                },
-                Token::Ident(name) => {
-                    match str::from_utf8(name) {
-                        Ok(s) => Some(Rc::from(Node {
-                            kind: NodeKind::Ident(s),
-                            left: None,
-                            right: None,
-                        })),
-                        Err(_) => panic!(),
-                    }
-                },
-                Token::True => Some(Rc::from(Node {
-                    kind: NodeKind::Bool(true),
-                    left: None,
-                    right: None,
-                })),
-                Token::True => Some(Rc::from(Node {
-                    kind: NodeKind::Bool(false),
-                    left: None,
-                    right: None,
-                })),
-                Token::Minus => match left {
-                    Some(_) => Some(Rc::from(Node {
-                        kind: NodeKind::Op(Op::Sub),
-                        left: Some(Rc::from(left.unwrap())),
-                        right: self.parse_expression(None, Token::Minus.precedence()),
-                    })),
-                    None => Some(Rc::from(Node {
-                        kind: NodeKind::Op(Op::Neg),
-                        left: None,
-                        right: self.parse_expression(None, precedence),
-                    })),
-                },
-                Token::Bang => Some(Rc::from(Node {
-                    kind: NodeKind::Op(Op::Not),
-                    left: None,
-                    right: self.parse_expression(None, Token::Bang.precedence()),
-                })),
-                Token::Plus => Some(Rc::from(Node {
-                    kind: NodeKind::Op(Op::Add),
-                    left: Some(Rc::from(left.unwrap())),
-                    right: self.parse_expression(None, Token::Plus.precedence()),
-                })),
-                Token::Minus => Some(Rc::from(Node {
-                    kind: NodeKind::Op(Op::Sub),
-                    left: Some(Rc::from(left.unwrap())),
-                    right: self.parse_expression(None, Token::Minus.precedence()),
-                })),
-                Token::Asterisk => Some(Rc::from(Node {
-                    kind: NodeKind::Op(Op::Mul),
-                    left: Some(Rc::from(left.unwrap())),
-                    right: self.parse_expression(None, Token::Asterisk.precedence()),
-                })),
-                Token::Slash => Some(Rc::from(Node {
-                    kind: NodeKind::Op(Op::Div),
-                    left: Some(Rc::from(left.unwrap())),
-                    right: self.parse_expression(None, Token::Slash.precedence()),
-                })),
-                _ => None,
-            },
-            None => todo!(),
+                Rc::from(Some(Node {
+                    kind: NodeKind::Int(i),
+                    left: None.into(),
+                    right: None.into(),
+                }))
+            }
+            Some(Token::LParen) => self.parse_expression(0),
+            _ => None.into(),
         };
 
-        while precedence < self.peek_token.unwrap_or(Token::EOF).precedence() {
+        loop {
+            // ... and these are infix / postfix
             match self.peek_token {
-                Some(Token::Semicolon) => break,
-                None => break,
+                Some(Token::RParen) => {
+                    self.next_token();
+                    break;
+                }
                 _ => {
-                    node = self.parse_expression(node, self.curr_token.unwrap().precedence());
+                    let op = match self.peek_token {
+                        Some(Token::Eof) => break,
+                        None => break,
+                        Some(Token::Plus) => Some(Op::Add),
+                        Some(Token::Asterisk) => Some(Op::Mul),
+                        _ => None,
+                    };
+
+                    match op {
+                        Some(op) => {
+                            if op.precedence() < precedence {
+                                break;
+                            }
+                            self.next_token();
+
+                            let rhs = self.parse_expression(op.precedence());
+
+                            lhs = Rc::from(Some(Node {
+                                kind: NodeKind::Op(op),
+                                left: lhs,
+                                right: rhs,
+                            }));
+                        }
+                        None => break,
+                    }
                 }
             }
         }
 
-        match node {
-            Some(node) => Some(Rc::from(node)),
-            None => None,
-        }
+        Rc::from(lhs)
     }
 }
 
 mod tests {
     use super::*;
-
+    // todo make these easier to write
     #[test]
     fn int_literal() {
         let input = "453;";
         let expected = Node {
             kind: NodeKind::Int(453),
-            left: None,
-            right: None,
+            left: None.into(),
+            right: None.into(),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -174,11 +134,11 @@ mod tests {
         let input = "__var_12;";
         let expected = Node {
             kind: NodeKind::Ident("__var_12"),
-            left: None,
-            right: None,
+            left: None.into(),
+            right: None.into(),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -186,11 +146,11 @@ mod tests {
         let input = "true";
         let expected = Node {
             kind: NodeKind::Bool(true),
-            left: None,
-            right: None,
+            left: None.into(),
+            right: None.into(),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -198,15 +158,15 @@ mod tests {
         let input = "-12;";
         let expected = Node {
             kind: NodeKind::Op(Op::Neg),
-            left: None,
-            right: Some(Rc::from(Node {
+            left: None.into(),
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Int(12),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -214,15 +174,15 @@ mod tests {
         let input = "!1;";
         let expected = Node {
             kind: NodeKind::Op(Op::Not),
-            left: None,
-            right: Some(Rc::from(Node {
+            left: None.into(),
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Int(1),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -230,19 +190,19 @@ mod tests {
         let input = "6 + 2";
         let expected = Node {
             kind: NodeKind::Op(Op::Add),
-            left: Some(Rc::from(Node {
+            left: Rc::from(Some(Node {
                 kind: NodeKind::Int(6),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
-            right: Some(Rc::from(Node {
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Int(2),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -250,19 +210,19 @@ mod tests {
         let input = "6 - 2";
         let expected = Node {
             kind: NodeKind::Op(Op::Sub),
-            left: Some(Rc::from(Node {
+            left: Rc::from(Some(Node {
                 kind: NodeKind::Int(6),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
-            right: Some(Rc::from(Node {
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Int(2),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -270,19 +230,19 @@ mod tests {
         let input = "6 * 2";
         let expected = Node {
             kind: NodeKind::Op(Op::Mul),
-            left: Some(Rc::from(Node {
+            left: Rc::from(Some(Node {
                 kind: NodeKind::Int(6),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
-            right: Some(Rc::from(Node {
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Int(2),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -290,19 +250,19 @@ mod tests {
         let input = "6 / 2";
         let expected = Node {
             kind: NodeKind::Op(Op::Div),
-            left: Some(Rc::from(Node {
+            left: Rc::from(Some(Node {
                 kind: NodeKind::Int(6),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
-            right: Some(Rc::from(Node {
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Int(2),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 
     #[test]
@@ -310,42 +270,42 @@ mod tests {
         let input = "1 + 2 * 3 - 4 / 5";
         let expected = Node {
             kind: NodeKind::Op(Op::Add),
-            left: Some(Rc::from(Node {
+            left: Rc::from(Some(Node {
                 kind: NodeKind::Int(1),
-                left: None,
-                right: None,
+                left: None.into(),
+                right: None.into(),
             })),
-            right: Some(Rc::from(Node {
+            right: Rc::from(Some(Node {
                 kind: NodeKind::Op(Op::Sub),
-                left: Some(Rc::from(Node {
+                left: Rc::from(Some(Node {
                     kind: NodeKind::Op(Op::Mul),
-                    left: Some(Rc::from(Node {
+                    left: Rc::from(Some(Node {
                         kind: NodeKind::Int(2),
-                        left: None,
-                        right: None,
+                        left: None.into(),
+                        right: None.into(),
                     })),
-                    right: Some(Rc::from(Node {
+                    right: Rc::from(Some(Node {
                         kind: NodeKind::Int(3),
-                        left: None,
-                        right: None,
+                        left: None.into(),
+                        right: None.into(),
                     })),
                 })),
-                right: Some(Rc::from(Node {
+                right: Rc::from(Some(Node {
                     kind: NodeKind::Op(Op::Div),
-                    left: Some(Rc::from(Node {
+                    left: Rc::from(Some(Node {
                         kind: NodeKind::Int(4),
-                        left: None,
-                        right: None,
+                        left: None.into(),
+                        right: None.into(),
                     })),
-                    right: Some(Rc::from(Node {
+                    right: Rc::from(Some(Node {
                         kind: NodeKind::Int(5),
-                        left: None,
-                        right: None,
+                        left: None.into(),
+                        right: None.into(),
                     })),
                 })),
             })),
         };
         let mut parser = Parser::new(input);
-        assert_eq!(*parser.parse_expression(None, 0).unwrap(), expected);
+        assert_eq!(*parser.parse_expression(0), Some(expected));
     }
 }
