@@ -19,6 +19,7 @@ pub enum Op {
 pub enum NodeKind<'a> {
     Ident(&'a str),
     Int(i64),
+    Bool(bool),
     Op(Op),
 }
 
