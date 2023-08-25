@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token<'a> {
     Illegal,
     EOF,
@@ -33,6 +33,22 @@ pub enum Token<'a> {
     If,
     Else,
     Return,
+}
+
+impl Token<'_> {
+    pub fn precedence(&self) -> i32 {
+        match self {
+            Token::Eq => 1,
+            Token::NotEq => 1,
+            Token::Lt => 2,
+            Token::Gt => 2,
+            Token::Plus => 3,
+            Token::Minus => 3,
+            Token::Asterisk => 4,
+            Token::Slash => 4,
+            _ => 0,
+        }
+    }
 }
 
 impl std::fmt::Display for Token<'_> {

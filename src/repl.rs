@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::lexer::Lexer;
+use crate::parser::Parser;
 
 pub struct Repl {}
 
@@ -11,9 +11,7 @@ impl Repl {
         loop {
             match stdin.read_line(&mut buffer) {
                 Ok(_) => {
-                    Lexer::new(buffer.as_str())
-                        .tokens()
-                        .for_each(|token| println!("    {:?}", token));
+                    println!("{:?}", Parser::new(buffer.as_str()).parse_expression(None, 0).unwrap())
                 }
                 Err(_) => break,
             }

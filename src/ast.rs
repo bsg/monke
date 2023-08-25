@@ -2,6 +2,8 @@ use std::{fmt, rc::Rc};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Op {
+    Eq,
+    NotEq,
     Lt,
     Gt,
     Add,
@@ -9,15 +11,15 @@ pub enum Op {
     Mul,
     Div,
     Neg,
+    Not,
     Call,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum NodeKind<'a> {
     Ident(&'a str),
-    InfixOp(Op),
-    PrefixOp(Op),
     Int(i64),
+    Op(Op),
 }
 
 #[derive(PartialEq, Eq)]
