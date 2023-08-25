@@ -54,6 +54,7 @@ impl<'a> Parser<'a> {
 
         let mut lhs = match self.curr_token {
             // these are prefix...
+            // INT
             Some(Token::Int(s)) => {
                 let i = match str::from_utf8(s) {
                     Ok(s) => match s.parse() {
@@ -69,6 +70,40 @@ impl<'a> Parser<'a> {
                     right: None.into(),
                 }))
             }
+            // IDENT
+            Some(Token::Ident(name)) => match str::from_utf8(name) {
+                Ok(name) => Rc::from(Some(Node {
+                    kind: NodeKind::Ident(name),
+                    left: None.into(),
+                    right: None.into(),
+                })),
+                Err(_) => todo!(),
+            },
+            // TRUE
+            Some(Token::True) => Rc::from(Some(Node {
+                kind: NodeKind::Bool(true),
+                left: None.into(),
+                right: None.into(),
+            })),
+            // FALSE
+            Some(Token::False) => Rc::from(Some(Node {
+                kind: NodeKind::Bool(false),
+                left: None.into(),
+                right: None.into(),
+            })),
+            // NEG
+            Some(Token::Minus) => Rc::from(Some(Node {
+                kind: NodeKind::Op(Op::Neg),
+                left: None.into(),
+                right: self.parse_expression(0),
+            })),
+            // NOT
+            Some(Token::Bang) => Rc::from(Some(Node {
+                kind: NodeKind::Op(Op::Not),
+                left: None.into(),
+                right: self.parse_expression(0),
+            })),
+            // LPAREN
             Some(Token::LParen) => self.parse_expression(0),
             _ => None.into(),
         };
@@ -85,7 +120,9 @@ impl<'a> Parser<'a> {
                         Some(Token::Eof) => break,
                         None => break,
                         Some(Token::Plus) => Some(Op::Add),
+                        Some(Token::Minus) => Some(Op::Sub),
                         Some(Token::Asterisk) => Some(Op::Mul),
+                        Some(Token::Slash) => Some(Op::Div),
                         _ => None,
                     };
 
