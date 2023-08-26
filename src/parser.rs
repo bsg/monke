@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
             Some(Token::LBrace) => {
                 self.next_token();
                 loop {
-                    // todo fix unwrap
+                    // TODO fix unwrap
                     match Rc::into_inner(self.parse_statement()).unwrap() {
                         Some(stmt) => statements.push(Rc::from(stmt)),
                         None => break,
@@ -53,8 +53,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // TODO remember to make this non pub
-    pub fn parse_if(&mut self) -> Rc<Option<Node<'a>>> {
+    fn parse_if(&mut self) -> Rc<Option<Node<'a>>> {
         self.next_token();
         match self.tokens.peek() {
             Some(Token::LParen) => {
@@ -82,49 +81,81 @@ impl<'a> Parser<'a> {
     }
 
     // TODO remember to make this non pub
-    pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
+    pub fn parse_fn(&mut self) -> Rc<Option<Node<'a>>> {
+        let mut args: Vec<&'a str> = Vec::new();
+
+        self.next_token();
         match self.tokens.peek() {
-            Some(token) => match token {
-                Token::Let => {
-                    self.next_token();
-                    self.next_token();
+            Some(Token::LParen) => {
+                self.next_token();
+                self.next_token();
+                loop {
+                    // TODO fix unwrap
                     match self.curr_token {
-                        Some(Token::Ident(ident)) => {
-                            self.next_token();
-                            match self.curr_token {
-                                Some(Token::Assign) => Rc::from(Some(Node {
-                                    kind: NodeKind::Let,
-                                    left: self.parse_ident(ident),
-                                    right: self.parse_expression(0),
-                                })),
-                                _ => todo!(),
-                            }
-                        }
-                        _ => todo!(),
+                        Some(Token::Ident(name)) => args.push(str::from_utf8(name).unwrap()),
+                        Some(Token::Comma) => (),
+                        _ => break,
                     }
-                }
-                Token::Return => {
                     self.next_token();
-                    Rc::from(Some(Node {
-                        kind: NodeKind::Return,
-                        left: None.into(),
-                        right: self.parse_expression(0),
-                    }))
                 }
-                _ => self.parse_expression(0),
-            },
+                let body = self.parse_block();
+
+                Rc::from(Some(Node {
+                    kind: NodeKind::Fn(Rc::from(FnExpression { args })),
+                    left: None.into(),
+                    right: body,
+                }))
+            }
+            Some(_) => todo!(),
             None => None.into(),
         }
     }
 
-    fn parse_ident(&self, name: &'a [u8]) -> Rc<Option<Node<'a>>> {
-        match str::from_utf8(name) {
-            Ok(name) => Rc::from(Some(Node {
-                kind: NodeKind::Ident(name),
-                left: None.into(),
-                right: None.into(),
-            })),
-            Err(_) => todo!(),
+    fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
+        match self.tokens.peek() {
+            Some(Token::Let) => {
+                self.next_token();
+                self.next_token();
+                match self.curr_token {
+                    Some(Token::Ident(_)) => {
+                        let lhs = self.parse_ident();
+                        self.next_token();
+                        match self.curr_token {
+                            Some(Token::Assign) => Rc::from(Some(Node {
+                                kind: NodeKind::Let,
+                                left: lhs,
+                                right: self.parse_expression(0),
+                            })),
+                            _ => todo!(),
+                        }
+                    }
+                    _ => todo!(),
+                }
+            }
+            Some(Token::Return) => {
+                self.next_token();
+                Rc::from(Some(Node {
+                    kind: NodeKind::Return,
+                    left: None.into(),
+                    right: self.parse_expression(0),
+                }))
+            }
+            Some(_) => self.parse_expression(0),
+            None => None.into(),
+        }
+    }
+
+    fn parse_ident(&self) -> Rc<Option<Node<'a>>> {
+        match self.curr_token {
+            Some(Token::Ident(name)) => match str::from_utf8(name) {
+                Ok(name) => Rc::from(Some(Node {
+                    kind: NodeKind::Ident(name),
+                    left: None.into(),
+                    right: None.into(),
+                })),
+                Err(_) => todo!(),
+            },
+            _ => todo!(),
         }
     }
 
@@ -149,7 +180,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             // IDENT
-            Some(Token::Ident(name)) => self.parse_ident(name),
+            Some(Token::Ident(_)) => self.parse_ident(),
             // TRUE
             Some(Token::True) => Rc::from(Some(Node {
                 kind: NodeKind::Bool(true),
@@ -228,6 +259,7 @@ impl<'a> Parser<'a> {
 }
 
 mod tests {
+    // TODO clusterfuck ahead
     use super::*;
 
     #[test]
@@ -466,5 +498,22 @@ mod tests {
         )";
         let mut parser = Parser::new(input);
         assert_eq!(format!("{:?}", parser.parse_if()), expected);
+    }
+
+    #[test]
+    fn fn_expression() {
+        let input = "fn(a, b, c){return a * b - c}";
+        let expected = "Some(\
+            Fn([\"a\", \"b\", \"c\"]))\n\
+            -Block(Return\n\
+            -Op(Sub)\n\
+            --Op(Mul)\n\
+            ---Ident(\"a\")\n\
+            ---Ident(\"b\")\n\
+            --Ident(\"c\")\n\
+            )\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", parser.parse_fn()), expected);
     }
 }

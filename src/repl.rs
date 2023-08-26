@@ -10,12 +10,10 @@ impl Repl {
         let stdin = io::stdin();
         loop {
             match stdin.read_line(&mut buffer) {
-                Ok(_) => {
-                    match Parser::new(buffer.as_str()).parse_if().as_ref() {
-                        Some(ast) => println!("{:?}", ast),
-                        None => (),
-                    }
-                }
+                Ok(_) => match Parser::new(buffer.as_str()).parse_fn().as_ref() {
+                    Some(ast) => println!("{:?}", ast),
+                    None => (),
+                },
                 Err(_) => break,
             }
             buffer.clear();

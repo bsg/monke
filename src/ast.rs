@@ -36,6 +36,10 @@ pub struct IfExpression<'a> {
     pub condition: Rc<Node<'a>>,
 }
 
+pub struct FnExpression<'a> {
+    pub args: Vec<&'a str>,
+}
+
 pub enum NodeKind<'a> {
     Ident(&'a str),
     Int(i64),
@@ -45,6 +49,7 @@ pub enum NodeKind<'a> {
     Return,
     If(IfExpression<'a>),
     Block(Rc<BlockStatement<'a>>),
+    Fn(Rc<FnExpression<'a>>)
 }
 
 pub struct Node<'a> {
@@ -66,6 +71,7 @@ impl fmt::Debug for NodeKind<'_> {
                 f.write_fmt(format_args!("If\n{:?}", arg0))
             },
             Self::Block(arg0) => f.debug_tuple("Block").field(arg0).finish(),
+            Self::Fn(arg0) => write!(f, "Fn({:?})", arg0),
         }
     }
 }
@@ -106,5 +112,11 @@ impl fmt::Debug for BlockStatement<'_> {
 impl fmt::Debug for IfExpression<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:?})", self.condition))
+    }
+}
+
+impl fmt::Debug for FnExpression<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{:?})", self.args))
     }
 }
