@@ -21,15 +21,23 @@ impl<'a> Parser<'a> {
     }
 
     fn next_token(&mut self) {
-        self.curr_token = self.tokens.next();
-        self.peek_token = match self.tokens.peek() {
-            Some(token) => Some(*token),
-            None => None,
-        };
+        loop {
+            self.curr_token = self.tokens.next();
+            self.peek_token = match self.tokens.peek() {
+                Some(token) => Some(*token),
+                None => None,
+            };
+            if let Some(Token::Semicolon) = self.curr_token {
+            } else {
+                break;
+            }
+        }
     }
 
+    /// Caller must ensure current token is LBrace
     fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
         let mut statements: Vec<Rc<Node<'a>>> = Vec::new();
+
         match self.curr_token {
             Some(Token::LBrace) => {
                 loop {
@@ -38,7 +46,6 @@ impl<'a> Parser<'a> {
                         Some(stmt) => statements.push(Rc::from(stmt)),
                         None => break,
                     }
-                    self.next_token();
                 }
                 assert_eq!(self.curr_token, Some(Token::RBrace));
                 self.next_token(); // Consume RBrace
@@ -48,19 +55,30 @@ impl<'a> Parser<'a> {
                     right: None.into(),
                 }))
             }
-            Some(_) => todo!(),
-            None => None.into(),
+            _ => None.into(),
         }
     }
 
     fn parse_if(&mut self) -> Rc<Option<Node<'a>>> {
         // TODO fix unwrap
-        self.next_token();
+        assert_eq!(self.curr_token, Some(Token::If));
         match Rc::into_inner(self.parse_expression(0)).unwrap() {
             Some(cond) => {
+                assert_eq!(self.curr_token, Some(Token::RParen));
                 self.next_token();
                 let lhs = self.parse_block();
+
+                // eat 'else' if there is one
+                loop {
+                    match self.curr_token {
+                        Some(Token::Else) => self.next_token(),
+                        _ => break,
+                    }
+                }
+
+                assert_ne!(self.curr_token, Some(Token::RBrace));
                 let rhs = self.parse_block();
+
                 match *lhs {
                     Some(_) => Rc::from(Some(Node {
                         kind: NodeKind::If(IfExpression {
@@ -92,7 +110,9 @@ impl<'a> Parser<'a> {
                     }
                     self.next_token();
                 }
-                self.next_token(); // Consume RParen
+
+                self.next_token();
+                assert_eq!(self.curr_token, Some(Token::LBrace));
                 let body = self.parse_block();
 
                 Rc::from(Some(Node {
@@ -130,7 +150,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
-        match self.tokens.peek() {
+        // TODO assert semicolon termination where necessary
+        let node = match self.tokens.peek() {
             Some(Token::Let) => {
                 self.next_token();
                 self.next_token();
@@ -160,7 +181,16 @@ impl<'a> Parser<'a> {
             }
             Some(_) => self.parse_expression(0),
             None => None.into(),
+        };
+
+        loop {
+            match self.curr_token {
+                Some(Token::Semicolon) => self.next_token(),
+                _ => break,
+            }
         }
+
+        node
     }
 
     fn parse_ident(&self) -> Rc<Option<Node<'a>>> {
@@ -179,6 +209,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_expression(&mut self, precedence: i32) -> Rc<Option<Node<'a>>> {
         self.next_token();
+
         let mut lhs = match self.curr_token {
             // these are prefix...
             // INT
@@ -245,8 +276,6 @@ impl<'a> Parser<'a> {
                 }
                 _ => {
                     let op = match self.peek_token {
-                        Some(Token::Eof) => break,
-                        None => break,
                         Some(Token::Assign) => Some(Op::Assign),
                         Some(Token::Plus) => Some(Op::Add),
                         Some(Token::Minus) => Some(Op::Sub),
@@ -257,7 +286,7 @@ impl<'a> Parser<'a> {
                         Some(Token::Lt) => Some(Op::Lt),
                         Some(Token::Gt) => Some(Op::Gt),
                         Some(Token::LParen) => Some(Op::Call),
-                        _ => None,
+                        _ => break,
                     };
 
                     match op {
@@ -270,9 +299,7 @@ impl<'a> Parser<'a> {
                                 break;
                             }
                             self.next_token();
-
                             let rhs = self.parse_expression(op.precedence());
-
                             lhs = Rc::from(Some(Node {
                                 kind: NodeKind::Op(op),
                                 left: lhs,
@@ -284,7 +311,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        Rc::from(lhs)
+        lhs
     }
 }
 
@@ -445,6 +472,44 @@ mod tests {
     }
 
     #[test]
+    fn if_with_alternate() {
+        assert_parse!(
+            "if (a < b) {return a} {return b}",
+            "If\
+            -Lt\
+            --Ident(a)\
+            --Ident(b)\
+            Then\
+            -Block\
+            --Return\
+            ---Ident(a)\
+            Else\
+            -Block\
+            --Return\
+            ---Ident(b)"
+        );
+    }
+
+    #[test]
+    fn if_else() {
+        assert_parse!(
+            "if (a < b) {return a} else {return b}",
+            "If\
+            -Lt\
+            --Ident(a)\
+            --Ident(b)\
+            Then\
+            -Block\
+            --Return\
+            ---Ident(a)\
+            Else\
+            -Block\
+            --Return\
+            ---Ident(b)"
+        );
+    }
+
+    #[test]
     fn op_precedence() {
         assert_parse!(
             "1 + 2 * (3 - 4) / 5",
@@ -494,6 +559,15 @@ mod tests {
             -Add\
             --Int(3)\
             --Int(4)"
+        );
+    }
+
+    #[test]
+    fn nested_blocks() {
+        assert_parse!(
+            "{{}}",
+            "Block\
+             -Block"
         );
     }
 
