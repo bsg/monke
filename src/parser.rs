@@ -28,14 +28,13 @@ impl<'a> Parser<'a> {
         };
     }
 
-    //TODO remember to make this non pub
-    pub fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
+    fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
         let mut statements: Vec<Rc<Node<'a>>> = Vec::new();
         match self.tokens.peek() {
             Some(Token::LBrace) => {
                 self.next_token();
                 loop {
-                    // todo fix this
+                    // todo fix unwrap
                     match Rc::into_inner(self.parse_statement()).unwrap() {
                         Some(stmt) => statements.push(Rc::from(stmt)),
                         None => break,
@@ -50,7 +49,35 @@ impl<'a> Parser<'a> {
                 }))
             }
             Some(_) => todo!(),
-            None => Rc::from(None),
+            None => None.into(),
+        }
+    }
+
+    // TODO remember to make this non pub
+    pub fn parse_if(&mut self) -> Rc<Option<Node<'a>>> {
+        self.next_token();
+        match self.tokens.peek() {
+            Some(Token::LParen) => {
+                self.next_token();
+                match Rc::into_inner(self.parse_expression(0)).unwrap() {
+                    Some(cond) => {
+                        let lhs = self.parse_block();
+                        let rhs = self.parse_block();
+                        match *lhs {
+                            Some(_) => Rc::from(Some(Node {
+                                kind: NodeKind::If(IfExpression {
+                                    condition: cond.into(),
+                                }),
+                                left: lhs,
+                                right: rhs,
+                            })),
+                            None => todo!(),
+                        }
+                    }
+                    None => todo!(),
+                }
+            }
+            _ => None.into(),
         }
     }
 
@@ -422,5 +449,22 @@ mod tests {
         )";
         let mut parser = Parser::new(input);
         assert_eq!(format!("{:?}", parser.parse_block()), expected);
+    }
+
+    #[test]
+    fn if_statement() {
+        let input = "if (x < 0) {return 0}";
+        let expected = "Some(\
+            If\n\
+            Op(Lt)\n\
+            -Ident(\"x\")\n\
+            -Int(0)\n\
+            )\n\
+            -Block(Return\n\
+            -Int(0)\n\
+            )\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", parser.parse_if()), expected);
     }
 }

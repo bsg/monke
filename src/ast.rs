@@ -1,6 +1,6 @@
 use std::{fmt, rc::Rc};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum Op {
     Assign,
     Eq,
@@ -28,12 +28,14 @@ impl Op {
     }
 }
 
-#[derive(PartialEq, Eq)]
 pub struct BlockStatement<'a> {
     pub statements: Vec<Rc<Node<'a>>>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+pub struct IfExpression<'a> {
+    pub condition: Rc<Node<'a>>,
+}
+
 pub enum NodeKind<'a> {
     Ident(&'a str),
     Int(i64),
@@ -41,15 +43,31 @@ pub enum NodeKind<'a> {
     Op(Op),
     Let,
     Return,
-    If(Rc<Option<Node<'a>>>),
+    If(IfExpression<'a>),
     Block(Rc<BlockStatement<'a>>),
 }
 
-#[derive(PartialEq, Eq)]
 pub struct Node<'a> {
     pub kind: NodeKind<'a>,
     pub left: Rc<Option<Node<'a>>>,
     pub right: Rc<Option<Node<'a>>>,
+}
+
+impl fmt::Debug for NodeKind<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ident(arg0) => f.debug_tuple("Ident").field(arg0).finish(),
+            Self::Int(arg0) => f.debug_tuple("Int").field(arg0).finish(),
+            Self::Bool(arg0) => f.debug_tuple("Bool").field(arg0).finish(),
+            Self::Op(arg0) => f.debug_tuple("Op").field(arg0).finish(),
+            Self::Let => write!(f, "Let"),
+            Self::Return => write!(f, "Return"),
+            Self::If(arg0) => {
+                f.write_fmt(format_args!("If\n{:?}", arg0))
+            },
+            Self::Block(arg0) => f.debug_tuple("Block").field(arg0).finish(),
+        }
+    }
 }
 
 impl fmt::Debug for Node<'_> {
@@ -82,5 +100,11 @@ impl fmt::Debug for BlockStatement<'_> {
             f.write_fmt(format_args!("{:?}", stmt))?;
         }
         Ok(())
+    }
+}
+
+impl fmt::Debug for IfExpression<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{:?})", self.condition))
     }
 }

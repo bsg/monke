@@ -11,7 +11,7 @@ impl Repl {
         loop {
             match stdin.read_line(&mut buffer) {
                 Ok(_) => {
-                    match Parser::new(buffer.as_str()).parse_statement().as_ref() {
+                    match Parser::new(buffer.as_str()).parse_if().as_ref() {
                         Some(ast) => println!("{:?}", ast),
                         None => (),
                     }
