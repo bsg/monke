@@ -28,6 +28,11 @@ impl Op {
     }
 }
 
+#[derive(PartialEq, Eq)]
+pub struct BlockStatement<'a> {
+    pub statements: Vec<Rc<Node<'a>>>,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum NodeKind<'a> {
     Ident(&'a str),
@@ -37,7 +42,7 @@ pub enum NodeKind<'a> {
     Let,
     Return,
     If(Rc<Option<Node<'a>>>),
-    Block(Rc<Vec<Rc<Option<Node<'a>>>>>)
+    Block(Rc<BlockStatement<'a>>),
 }
 
 #[derive(PartialEq, Eq)]
@@ -67,6 +72,15 @@ impl fmt::Debug for Node<'_> {
             Ok(())
         }
         fmt_with_indent(self, f, 0)?;
+        Ok(())
+    }
+}
+
+impl fmt::Debug for BlockStatement<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for stmt in &self.statements {
+            f.write_fmt(format_args!("{:?}", stmt))?;
+        }
         Ok(())
     }
 }

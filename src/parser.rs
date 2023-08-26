@@ -29,23 +29,30 @@ impl<'a> Parser<'a> {
     }
 
     //TODO remember to make this non pub
-    // pub fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
-    //     let mut statements: Vec<Rc<Option<Node<'a>>>> = Vec::new();
-    //     match self.tokens.peek() {
-    //         Some(Token::LBrace) => {
-    //             loop {
-    //                 match self.parse_statement() {
-    //                     Some(stmt) => statements.push(stmt),
-    //                     None => break,
-    //                 }
-    //             }
-    //             assert_eq!(self.curr_token, Some(Token::RBrace));
-    //             Some(BlockStatement { statements })
-    //         }
-    //         Some(_) => todo!(),
-    //         None => None,
-    //     }
-    // }
+    pub fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
+        let mut statements: Vec<Rc<Node<'a>>> = Vec::new();
+        match self.tokens.peek() {
+            Some(Token::LBrace) => {
+                self.next_token();
+                loop {
+                    // todo fix this
+                    match Rc::into_inner(self.parse_statement()).unwrap() {
+                        Some(stmt) => statements.push(Rc::from(stmt)),
+                        None => break,
+                    }
+                    self.next_token();
+                }
+                assert_eq!(self.curr_token, Some(Token::RBrace));
+                Rc::from(Some(Node {
+                    kind: NodeKind::Block(Rc::from(BlockStatement { statements })),
+                    left: None.into(),
+                    right: None.into(),
+                }))
+            }
+            Some(_) => todo!(),
+            None => Rc::from(None),
+        }
+    }
 
     // TODO remember to make this non pub
     pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
@@ -400,22 +407,20 @@ mod tests {
         assert_eq!(format!("{:?}", parser.parse_statement()), expected);
     }
 
-    // #[test]
-    // fn block_statement() {
-    //     let input = "{1 + 2;3 + 4}";
-    //     let expected = "Some(\
-    //         {\n\
-    //         [expr]\n\
-    //         -Op(Add)\n\
-    //         --Int(1)\n\
-    //         --Int(2)\n\
-    //         [expr]\n\
-    //         -Op(Add)\n\
-    //         --Int(3)\n\
-    //         --Int(4)\n\
-    //         }\n\
-    //     )";
-    //     let mut parser = Parser::new(input);
-    //     assert_eq!(format!("{:?}", parser.parse_block()), expected);
-    // }
+    #[test]
+    fn block_statement() {
+        let input = "{1 + 2;3 + 4}";
+        let expected = "Some(\
+            Block(\
+            Op(Add)\n\
+            -Int(1)\n\
+            -Int(2)\n\
+            Op(Add)\n\
+            -Int(3)\n\
+            -Int(4)\n\
+            )\n\
+        )";
+        let mut parser = Parser::new(input);
+        assert_eq!(format!("{:?}", parser.parse_block()), expected);
+    }
 }
