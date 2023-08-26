@@ -93,18 +93,18 @@ impl fmt::Display for Node<'_> {
             (0..indent).for_each(|_| _ = f.write_str("-"));
 
             f.write_fmt(format_args!(
-                "{}\n",
+                "{}",
                 match &node.kind {
-                    NodeKind::Ident(s) => format!("Ident({})", s),
-                    NodeKind::Int(i) => format!("Int({})", i),
-                    NodeKind::Bool(b) => format!("Bool({})", b),
-                    NodeKind::Op(op) => format!("{:?}", op),
-                    NodeKind::Let => format!("Let"),
-                    NodeKind::Return => format!("Return"),
-                    NodeKind::If(_) => format!("If"),
-                    NodeKind::Call(_) => format!("Call"),
-                    NodeKind::Fn(args) => format!("Fn({})", args),
-                    NodeKind::Block(_) => format!("Block"),
+                    NodeKind::Ident(s) => format!("Ident({})\n", s),
+                    NodeKind::Int(i) => format!("Int({})\n", i),
+                    NodeKind::Bool(b) => format!("Bool({})\n", b),
+                    NodeKind::Op(op) => format!("{:?}\n", op),
+                    NodeKind::Let => format!("Let\n"),
+                    NodeKind::Return => format!("Return\n"),
+                    NodeKind::If(_) => format!("If\n"),
+                    NodeKind::Fn(args) => format!("Fn({})\n", args),
+                    NodeKind::Block(_) => format!("Block\n"),
+                    NodeKind::Call(_) => format!("Call "),
                 }
             ))?;
             match &node.kind {
@@ -113,6 +113,38 @@ impl fmt::Display for Node<'_> {
                         fmt_with_indent(stmt, f, indent + 1)?;
                     }
                 }
+                NodeKind::If(c) => {
+                    fmt_with_indent(&c.condition, f, indent + 1)?;
+                    match node.left.as_ref().clone() {
+                        Some(node) => {
+                            f.write_str("Then\n")?;
+                            fmt_with_indent(&node, f, indent + 1)?;
+                        }
+                        None => (),
+                    };
+                    match node.right.as_ref().clone() {
+                        Some(node) => {
+                            f.write_str("Else\n")?;
+                            fmt_with_indent(&node, f, indent + 1)?;
+                        }
+                        None => (),
+                    };
+                    return Ok(());
+                }
+
+                NodeKind::Call(c) => match node.right.as_ref().clone() {
+                    Some(rhs) => match rhs.kind {
+                        NodeKind::Ident(ident) => {
+                            f.write_fmt(format_args!("{}\n", ident))?;
+                            for arg in c.args.iter() {
+                                fmt_with_indent(arg, f, indent + 1)?;
+                            }
+                            return Ok(())
+                        }
+                        _ => (),
+                    },
+                    _ => (),
+                },
                 _ => (),
             }
             match node.left.as_ref().clone() {

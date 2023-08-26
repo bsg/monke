@@ -284,283 +284,243 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-
         Rc::from(lhs)
     }
 }
 
 mod tests {
-    // TODO clusterfuck ahead
     use super::*;
+
+    macro_rules! assert_parse {
+        ($input:expr, $expected:expr) => {
+            let mut parser = Parser::new($input);
+            match Rc::into_inner(parser.parse_statement()).unwrap() {
+                Some(ast) => assert_eq!(
+                    format!("{}", ast)
+                        .chars()
+                        .filter(|c| !c.is_ascii_control())
+                        .collect::<String>(),
+                    $expected
+                ),
+                None => panic!(),
+            }
+        };
+    }
 
     #[test]
     fn int_literal() {
-        let input = "453;";
-        let expected = "Some(\
-            Int(453)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!("453;", "Int(453)");
     }
 
     #[test]
     fn ident() {
-        let input = "__var_12;";
-        let expected = "Some(\
-            Ident(\"__var_12\")\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!("__var_12;", "Ident(__var_12)");
     }
 
     #[test]
     fn bool() {
-        let input = "true";
-        let expected = "Some(\
-            Bool(true)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!("true", "Bool(true)");
     }
 
     #[test]
     fn op_neg() {
-        let input = "-12;";
-        let expected = "Some(\
-            Op(Neg)\n\
-            -Int(12)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "-12;",
+            "Neg\
+            -Int(12)"
+        );
     }
 
     #[test]
     fn op_not() {
-        let input = "!false;";
-        let expected = "Some(\
-            Op(Not)\n\
-            -Bool(false)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "!false;",
+            "Not\
+            -Bool(false)"
+        );
     }
 
     #[test]
     fn op_assign() {
-        let input = "x = 2";
-        let expected = "Some(\
-            Op(Assign)\n\
-            -Ident(\"x\")\n\
-            -Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "x = 2",
+            "Assign\
+            -Ident(x)\
+            -Int(2)"
+        );
     }
 
     #[test]
     fn op_add() {
-        let input = "6 + 2";
-        let expected = "Some(\
-            Op(Add)\n\
-            -Int(6)\n\
-            -Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "6 + 2",
+            "Add\
+            -Int(6)\
+            -Int(2)"
+        );
     }
 
     #[test]
     fn op_sub() {
-        let input = "6 - 2";
-        let expected = "Some(\
-            Op(Sub)\n\
-            -Int(6)\n\
-            -Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "6 - 2",
+            "Sub\
+            -Int(6)\
+            -Int(2)"
+        );
     }
 
     #[test]
     fn op_mul() {
-        let input = "6 * 2";
-        let expected = "Some(\
-            Op(Mul)\n\
-            -Int(6)\n\
-            -Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "6 * 2",
+            "Mul\
+            -Int(6)\
+            -Int(2)"
+        );
     }
 
     #[test]
     fn op_div() {
-        let input = "6 / 2";
-        let expected = "Some(\
-            Op(Div)\n\
-            -Int(6)\n\
-            -Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "6 / 2",
+            "Div\
+            -Int(6)\
+            -Int(2)"
+        );
     }
 
     #[test]
     fn op_eq() {
-        let input = "5 == 5";
-        let expected = "Some(\
-            Op(Eq)\n\
-            -Int(5)\n\
-            -Int(5)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "5 == 5",
+            "Eq\
+            -Int(5)\
+            -Int(5)"
+        );
     }
 
     #[test]
     fn op_not_eq() {
-        let input = "5 != 5";
-        let expected = "Some(\
-            Op(NotEq)\n\
-            -Int(5)\n\
-            -Int(5)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "5 != 5",
+            "NotEq\
+            -Int(5)\
+            -Int(5)"
+        );
     }
     #[test]
     fn op_lt() {
-        let input = "5 < 5";
-        let expected = "Some(\
-            Op(Lt)\n\
-            -Int(5)\n\
-            -Int(5)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "5 < 5",
+            "Lt\
+            -Int(5)\
+            -Int(5)"
+        );
     }
 
     #[test]
     fn op_gt() {
-        let input = "5 > 5";
-        let expected = "Some(\
-            Op(Gt)\n\
-            -Int(5)\n\
-            -Int(5)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "5 > 5",
+            "Gt\
+            -Int(5)\
+            -Int(5)"
+        );
     }
 
     #[test]
     fn if_expression() {
-        let input = "if (x < 0) {return 0}";
-        let expected = "Some(\
-            If\n\
-            Op(Lt)\n\
-            -Ident(\"x\")\n\
-            -Int(0)\n\
-            )\n\
-            -Block(Return\n\
-            -Int(0)\n\
-            )\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "if (x < 0) {return 0}",
+            "If\
+            -Lt\
+            --Ident(x)\
+            --Int(0)\
+            Then\
+            -Block\
+            --Return\
+            ---Int(0)"
+        );
     }
 
     #[test]
     fn op_precedence() {
-        let input = "1 + 2 * (3 - 4) / 5";
-        let expected = "Some(\
-            Op(Add)\n\
-            -Int(1)\n\
-            -Op(Mul)\n\
-            --Int(2)\n\
-            --Op(Div)\n\
-            ---Op(Sub)\n\
-            ----Int(3)\n\
-            ----Int(4)\n\
-            ---Int(5)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "1 + 2 * (3 - 4) / 5",
+            "Add\
+            -Int(1)\
+            -Mul\
+            --Int(2)\
+            --Div\
+            ---Sub\
+            ----Int(3)\
+            ----Int(4)\
+            ---Int(5)"
+        );
     }
 
     #[test]
     fn let_statement() {
-        let input = "let x = 1 + 2";
-        let expected = "Some(\
-            Let\n\
-            -Ident(\"x\")\n\
-            -Op(Add)\n\
-            --Int(1)\n\
-            --Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_statement()), expected);
+        assert_parse!(
+            "let x = 1 + 2",
+            "Let\
+            -Ident(x)\
+            -Add\
+            --Int(1)\
+            --Int(2)"
+        );
     }
 
     #[test]
     fn return_statement() {
-        let input = "return 1 + 2";
-        let expected = "Some(\
-            Return\n\
-            -Op(Add)\n\
-            --Int(1)\n\
-            --Int(2)\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_statement()), expected);
+        assert_parse!(
+            "return 1 + 2",
+            "Return\
+            -Add\
+            --Int(1)\
+            --Int(2)"
+        );
     }
 
     #[test]
     fn block_expression() {
-        let input = "{1 + 2;3 + 4}";
-        let expected = "Some(\
-            Block(\
-            Op(Add)\n\
-            -Int(1)\n\
-            -Int(2)\n\
-            Op(Add)\n\
-            -Int(3)\n\
-            -Int(4)\n\
-            )\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "{1 + 2;3 + 4}",
+            "Block\
+            -Add\
+            --Int(1)\
+            --Int(2)\
+            -Add\
+            --Int(3)\
+            --Int(4)"
+        );
     }
 
     #[test]
     fn fn_expression() {
-        let input = "fn(a, b, c){return a * b - c}";
-        let expected = "Some(\
-            Fn([\"a\", \"b\", \"c\"]))\n\
-            -Block(Return\n\
-            -Op(Sub)\n\
-            --Op(Mul)\n\
-            ---Ident(\"a\")\n\
-            ---Ident(\"b\")\n\
-            --Ident(\"c\")\n\
-            )\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", *parser.parse_expression(0)), expected);
+        assert_parse!(
+            "fn(a, b, c){return a * b - c}",
+            "Fn(a, b, c)\
+            -Block\
+            --Return\
+            ---Sub\
+            ----Mul\
+            -----Ident(a)\
+            -----Ident(b)\
+            ----Ident(c)"
+        );
     }
 
     #[test]
     fn fn_call() {
-        let input = "f(2, a+1)";
-        let expected = "Some(\
-                Call(\n\
-                [Int(2)\n\
-                , Op(Add)\n\
-                -Ident(\"a\")\n\
-                -Int(1)\n\
-                ]))\n\
-                -Ident(\"f\")\n\
-        )";
-        let mut parser = Parser::new(input);
-        assert_eq!(format!("{:?}", parser.parse_expression(0)), expected);
+        assert_parse!(
+            "f(2, a+1)",
+            "Call f\
+                -Int(2)\
+                -Add\
+                --Ident(a)\
+                --Int(1)"
+        );
     }
 }
