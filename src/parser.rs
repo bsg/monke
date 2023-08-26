@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
+    pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
         match self.tokens.peek() {
             Some(Token::Let) => {
                 self.next_token();

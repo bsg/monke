@@ -81,6 +81,59 @@ impl fmt::Debug for NodeKind<'_> {
     }
 }
 
+impl fmt::Display for FnExpression<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.args.join(", ").as_str())
+    }
+}
+
+impl fmt::Display for Node<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn fmt_with_indent(node: &Node, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
+            (0..indent).for_each(|_| _ = f.write_str("-"));
+
+            f.write_fmt(format_args!(
+                "{}\n",
+                match &node.kind {
+                    NodeKind::Ident(s) => format!("Ident({})", s),
+                    NodeKind::Int(i) => format!("Int({})", i),
+                    NodeKind::Bool(b) => format!("Bool({})", b),
+                    NodeKind::Op(op) => format!("{:?}", op),
+                    NodeKind::Let => format!("Let"),
+                    NodeKind::Return => format!("Return"),
+                    NodeKind::If(_) => format!("If"),
+                    NodeKind::Call(_) => format!("Call"),
+                    NodeKind::Fn(args) => format!("Fn({})", args),
+                    NodeKind::Block(_) => format!("Block"),
+                }
+            ))?;
+            match &node.kind {
+                NodeKind::Block(block) => {
+                    for stmt in &block.statements {
+                        fmt_with_indent(stmt, f, indent + 1)?;
+                    }
+                }
+                _ => (),
+            }
+            match node.left.as_ref().clone() {
+                Some(node) => {
+                    fmt_with_indent(&node, f, indent + 1)?;
+                }
+                None => (),
+            };
+            match node.right.as_ref().clone() {
+                Some(node) => {
+                    fmt_with_indent(&node, f, indent + 1)?;
+                }
+                None => (),
+            };
+            Ok(())
+        }
+        fmt_with_indent(self, f, 0)?;
+        Ok(())
+    }
+}
+
 impl fmt::Debug for Node<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_with_indent(node: &Node, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
