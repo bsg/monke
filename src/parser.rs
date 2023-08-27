@@ -1,6 +1,5 @@
 use std::iter::Peekable;
 use std::rc::Rc;
-use std::str;
 
 use crate::ast::*;
 use crate::lexer::{Lexer, Token, Tokens};
@@ -101,7 +100,7 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 loop {
                     match self.curr_token {
-                        Some(Token::Ident(name)) => args.push(str::from_utf8(name).unwrap()),
+                        Some(Token::Ident(name)) => args.push(name),
                         Some(Token::Comma) => (),
                         _ => break,
                     }
@@ -165,7 +164,7 @@ impl<'a> Parser<'a> {
                     }
                     _ => todo!(),
                 }
-            },
+            }
             Some(Token::Return) => {
                 self.next_token();
                 Rc::from(Some(Node {
@@ -173,7 +172,7 @@ impl<'a> Parser<'a> {
                     left: None.into(),
                     right: self.parse_expression(0),
                 }))
-            },
+            }
             Some(_) => self.parse_expression(0),
             None => None.into(),
         };
@@ -189,14 +188,11 @@ impl<'a> Parser<'a> {
 
     fn parse_ident(&self) -> Rc<Option<Node<'a>>> {
         match self.curr_token {
-            Some(Token::Ident(name)) => match str::from_utf8(name) {
-                Ok(name) => Rc::from(Some(Node {
-                    kind: NodeKind::Ident(name),
-                    left: None.into(),
-                    right: None.into(),
-                })),
-                Err(_) => todo!(),
-            },
+            Some(Token::Ident(name)) => Rc::from(Some(Node {
+                kind: NodeKind::Ident(name),
+                left: None.into(),
+                right: None.into(),
+            })),
             _ => todo!(),
         }
     }
@@ -208,11 +204,8 @@ impl<'a> Parser<'a> {
             // these are prefix...
             // INT
             Some(Token::Int(s)) => {
-                let i = match str::from_utf8(s) {
-                    Ok(s) => match s.parse() {
-                        Ok(i) => i,
-                        Err(_) => panic!(),
-                    },
+                let i = match s.parse() {
+                    Ok(i) => i,
                     Err(_) => panic!(),
                 };
 

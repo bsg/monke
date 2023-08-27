@@ -1,9 +1,11 @@
+use std::str;
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Token<'a> {
     Illegal,
     Eof,
-    Ident(&'a [u8]),
-    Int(&'a [u8]),
+    Ident(&'a str),
+    Int(&'a str),
 
     // Operators
     Assign,
@@ -38,14 +40,8 @@ pub enum Token<'a> {
 impl std::fmt::Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Ident(ident) => f.write_fmt(format_args!(
-                "Ident({})",
-                String::from_utf8(ident.to_vec()).unwrap()
-            )),
-            Self::Int(int) => f.write_fmt(format_args!(
-                "Int({})",
-                String::from_utf8(int.to_vec()).unwrap()
-            )),
+            Self::Ident(s) => f.write_fmt(format_args!("Ident({})", s)),
+            Self::Int(s) => f.write_fmt(format_args!("Int({})", s)),
             _ => f.write_fmt(format_args!("{:?}", self)),
         }
     }
@@ -156,11 +152,17 @@ impl<'a> Tokens<'a> {
                         b"if" => If,
                         b"else" => Else,
                         b"return" => Return,
-                        _ => Ident(ident),
+                        _ => match str::from_utf8(ident) {
+                            Ok(s) => Ident(s),
+                            Err(_) => todo!(),
+                        },
                     };
                 }
                 (b'0'..=b'9') => {
-                    return Int(self.read_number());
+                    return match str::from_utf8(self.read_number()) {
+                        Ok(s) => Int(s),
+                        Err(_) => todo!(),
+                    }
                 }
                 _ => Illegal,
             },
@@ -245,12 +247,12 @@ mod tests {
 
         #[rustfmt::skip]
         let expected = vec!{
-            Let, Ident(b"five"), Assign, Int(b"5"), Semicolon,
-            Let, Ident(b"ten"), Assign, Int(b"10"), Semicolon,
-            Let, Ident(b"add"), Assign, Function, LParen, Ident(b"x"), Comma, Ident(b"y"), RParen, LBrace,
-            Ident(b"x"), Plus, Ident(b"y"), Semicolon,
+            Let, Ident("five"), Assign, Int("5"), Semicolon,
+            Let, Ident("ten"), Assign, Int("10"), Semicolon,
+            Let, Ident("add"), Assign, Function, LParen, Ident("x"), Comma, Ident("y"), RParen, LBrace,
+            Ident("x"), Plus, Ident("y"), Semicolon,
             RBrace, Semicolon,
-            Let, Ident(b"result"), Assign, Ident(b"add"), LParen, Ident(b"five"), Comma, Ident(b"ten"), RParen, Semicolon
+            Let, Ident("result"), Assign, Ident("add"), LParen, Ident("five"), Comma, Ident("ten"), RParen, Semicolon
         };
 
         let lexer = Lexer::new(source);
