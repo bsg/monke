@@ -42,9 +42,9 @@ impl std::fmt::Display for Token<'_> {
                 "Ident({})",
                 String::from_utf8(ident.to_vec()).unwrap()
             )),
-            Self::Int(ident) => f.write_fmt(format_args!(
-                "Ident({})",
-                String::from_utf8(ident.to_vec()).unwrap()
+            Self::Int(int) => f.write_fmt(format_args!(
+                "Int({})",
+                String::from_utf8(int.to_vec()).unwrap()
             )),
             _ => f.write_fmt(format_args!("{:?}", self)),
         }

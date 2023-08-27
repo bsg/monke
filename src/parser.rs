@@ -41,7 +41,6 @@ impl<'a> Parser<'a> {
         match self.curr_token {
             Some(Token::LBrace) => {
                 loop {
-                    // TODO fix unwrap
                     match Rc::into_inner(self.parse_statement()).unwrap() {
                         Some(stmt) => statements.push(Rc::from(stmt)),
                         None => break,
@@ -60,7 +59,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_if(&mut self) -> Rc<Option<Node<'a>>> {
-        // TODO fix unwrap
         assert_eq!(self.curr_token, Some(Token::If));
         match Rc::into_inner(self.parse_expression(0)).unwrap() {
             Some(cond) => {
@@ -102,7 +100,6 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 self.next_token();
                 loop {
-                    // TODO fix unwrap
                     match self.curr_token {
                         Some(Token::Ident(name)) => args.push(str::from_utf8(name).unwrap()),
                         Some(Token::Comma) => (),
@@ -131,7 +128,6 @@ impl<'a> Parser<'a> {
 
         self.next_token();
         loop {
-            // TODO fix unwrap
             match Rc::into_inner(self.parse_expression(0)).unwrap() {
                 Some(node) => {
                     args.push(node.into());
@@ -150,7 +146,6 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
-        // TODO assert semicolon termination where necessary
         let node = match self.tokens.peek() {
             Some(Token::Let) => {
                 self.next_token();
@@ -170,7 +165,7 @@ impl<'a> Parser<'a> {
                     }
                     _ => todo!(),
                 }
-            }
+            },
             Some(Token::Return) => {
                 self.next_token();
                 Rc::from(Some(Node {
@@ -178,18 +173,17 @@ impl<'a> Parser<'a> {
                     left: None.into(),
                     right: self.parse_expression(0),
                 }))
-            }
+            },
             Some(_) => self.parse_expression(0),
             None => None.into(),
         };
 
         loop {
-            match self.curr_token {
+            match self.peek_token {
                 Some(Token::Semicolon) => self.next_token(),
                 _ => break,
             }
         }
-
         node
     }
 
@@ -268,7 +262,7 @@ impl<'a> Parser<'a> {
         };
 
         loop {
-            // ... and these are infix / postfix
+            // ... and these are infix
             match self.peek_token {
                 Some(Token::RParen) => {
                     self.next_token();
@@ -549,9 +543,27 @@ mod tests {
     }
 
     #[test]
-    fn block_expression() {
+    fn block_with_semicolons() {
         assert_parse!(
-            "{1 + 2;3 + 4}",
+            "{let x = 1;let y = 2;return x + y}",
+            "Block\
+            -Let\
+            --Ident(x)\
+            --Int(1)\
+            -Let\
+            --Ident(y)\
+            --Int(2)\
+            -Return\
+            --Add\
+            ---Ident(x)\
+            ---Ident(y)"
+        );
+    }
+
+    #[test]
+    fn block_without_semicolons() {
+        assert_parse!(
+            "{1 + 2 3 + 4}",
             "Block\
             -Add\
             --Int(1)\
@@ -565,16 +577,19 @@ mod tests {
     #[test]
     fn nested_blocks() {
         assert_parse!(
-            "{{}}",
+            "{{1+2}}",
             "Block\
-             -Block"
+            -Block\
+            --Add\
+            ---Int(1)\
+            ---Int(2)"
         );
     }
 
     #[test]
     fn fn_expression() {
         assert_parse!(
-            "fn(a, b, c){return a * b - c}",
+            "fn(a, b, c){return a * b - c;}",
             "Fn(a, b, c)\
             -Block\
             --Return\

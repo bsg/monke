@@ -58,6 +58,7 @@ pub enum NodeKind<'a> {
     // TODO expression list?
 }
 
+// TODO move rc into option?
 pub struct Node<'a> {
     pub kind: NodeKind<'a>,
     pub left: Rc<Option<Node<'a>>>,
