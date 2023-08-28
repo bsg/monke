@@ -212,9 +212,9 @@ impl<'a> Parser<'a> {
             // FALSE
             Some(Token::False) => node!(NodeKind::Bool(false), None, None),
             // NEG
-            Some(Token::Minus) => node!(NodeKind::Op(Op::Neg), None, self.parse_expression(0)),
+            Some(Token::Minus) => node!(NodeKind::PrefixOp(Op::Neg), None, self.parse_expression(0)),
             // NOT
-            Some(Token::Bang) => node!(NodeKind::Op(Op::Not), None, self.parse_expression(0)),
+            Some(Token::Bang) => node!(NodeKind::PrefixOp(Op::Not), None, self.parse_expression(0)),
             // LET
             Some(Token::Let) => self.parse_statement(),
             // LPAREN
@@ -261,7 +261,7 @@ impl<'a> Parser<'a> {
                             }
                             self.next_token();
                             let rhs = self.parse_expression(op.precedence());
-                            lhs = node!(NodeKind::Op(op), lhs, rhs);
+                            lhs = node!(NodeKind::InfixOp(op), lhs, rhs);
                         }
                         None => break,
                     }
