@@ -28,7 +28,7 @@ pub enum Token<'a> {
     RBrace,
 
     // Keywords
-    Function,
+    Fn,
     Let,
     True,
     False,
@@ -145,7 +145,7 @@ impl<'a> Tokens<'a> {
                 (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
                     let ident = self.read_identifier();
                     return match ident {
-                        b"fn" => Function,
+                        b"fn" => Fn,
                         b"let" => Let,
                         b"true" => True,
                         b"false" => False,
@@ -249,7 +249,7 @@ mod tests {
         let expected = vec!{
             Let, Ident("five"), Assign, Int("5"), Semicolon,
             Let, Ident("ten"), Assign, Int("10"), Semicolon,
-            Let, Ident("add"), Assign, Function, LParen, Ident("x"), Comma, Ident("y"), RParen, LBrace,
+            Let, Ident("add"), Assign, Fn, LParen, Ident("x"), Comma, Ident("y"), RParen, LBrace,
             Ident("x"), Plus, Ident("y"), Semicolon,
             RBrace, Semicolon,
             Let, Ident("result"), Assign, Ident("add"), LParen, Ident("five"), Comma, Ident("ten"), RParen, Semicolon

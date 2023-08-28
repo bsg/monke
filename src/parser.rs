@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use std::rc::Rc;
 
-use crate::ast::*;
+use crate::ast::{*};
 use crate::lexer::{Lexer, Token, Tokens};
 
 pub struct Parser<'a> {
@@ -11,7 +11,7 @@ pub struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Parser<'a> {
+    pub fn new(input: &'a str) -> Parser {
         Parser {
             tokens: Lexer::new(input).tokens().peekable(),
             curr_token: None,
@@ -19,6 +19,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    // TODO either use the iter or this. both makes things confusing
     fn next_token(&mut self) {
         loop {
             self.curr_token = self.tokens.next();
@@ -33,21 +34,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Caller must ensure current token is LBrace
-    fn parse_block(&mut self) -> Rc<Option<Node<'a>>> {
-        let mut statements: Vec<Rc<Node<'a>>> = Vec::new();
+    fn parse_block(&mut self) -> NodeRef<'a> {
+        let mut statements: Vec<NodeRef> = Vec::new();
 
         match self.curr_token {
             Some(Token::LBrace) => {
                 loop {
-                    match Rc::into_inner(self.parse_statement()).unwrap() {
-                        Some(stmt) => statements.push(Rc::from(stmt)),
+                    match self.parse_statement() {
+                        Some(stmt) => statements.push(Some(Rc::from(stmt))),
                         None => break,
                     }
                 }
                 assert_eq!(self.curr_token, Some(Token::RBrace));
                 self.next_token(); // Consume RBrace
-                Rc::from(Some(Node {
+                Some(Rc::from(Node {
                     kind: NodeKind::Block(BlockExpression { statements }),
                     left: None.into(),
                     right: None.into(),
@@ -57,9 +57,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_if(&mut self) -> Rc<Option<Node<'a>>> {
+    /// caller must ensure current token is If
+    fn parse_if(&mut self) -> NodeRef<'a> {
         assert_eq!(self.curr_token, Some(Token::If));
-        match Rc::into_inner(self.parse_expression(0)).unwrap() {
+        match self.parse_expression(0) {
             Some(cond) => {
                 assert_eq!(self.curr_token, Some(Token::RParen));
                 self.next_token();
@@ -76,10 +77,11 @@ impl<'a> Parser<'a> {
                 assert_ne!(self.curr_token, Some(Token::RBrace));
                 let rhs = self.parse_block();
 
-                match *lhs {
-                    Some(_) => Rc::from(Some(Node {
+                
+                match lhs {
+                    Some(_) => Some(Rc::from(Node {
                         kind: NodeKind::If(IfExpression {
-                            condition: cond.into(),
+                            condition: Some(cond),
                         }),
                         left: lhs,
                         right: rhs,
@@ -91,11 +93,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_fn(&mut self) -> Rc<Option<Node<'a>>> {
+    // caller must ensure current token is Fn
+    fn parse_fn(&mut self) -> NodeRef<'a> {
         let mut args: Vec<&'a str> = Vec::new();
 
         match (self.curr_token, self.peek_token) {
-            (Some(Token::Function), Some(Token::LParen)) => {
+            (Some(Token::Fn), Some(Token::LParen)) => {
                 self.next_token();
                 self.next_token();
                 loop {
@@ -111,7 +114,7 @@ impl<'a> Parser<'a> {
                 assert_eq!(self.curr_token, Some(Token::LBrace));
                 let body = self.parse_block();
 
-                Rc::from(Some(Node {
+                Some(Rc::from(Node {
                     kind: NodeKind::Fn(FnExpression { args }),
                     left: None.into(),
                     right: body,
@@ -122,29 +125,28 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_call(&mut self, rhs: Rc<Option<Node<'a>>>) -> Rc<Option<Node<'a>>> {
-        let mut args: Vec<Rc<Node<'a>>> = Vec::new();
+    fn parse_call(&mut self, rhs: NodeRef<'a>) -> NodeRef<'a> {
+        let mut args: Vec<NodeRef<'a>> = Vec::new();
 
         self.next_token();
         loop {
-            match Rc::into_inner(self.parse_expression(0)).unwrap() {
+            match self.parse_expression(0) {
                 Some(node) => {
                     args.push(node.into());
                 }
                 None => break,
             }
-            self.next_token();
         }
-        self.next_token();
+        assert_eq!(self.curr_token, Some(Token::RParen));
 
-        Rc::from(Some(Node {
+        Some(Rc::from(Node {
             kind: NodeKind::Call(CallExpression { args }),
             left: None.into(),
             right: rhs,
         }))
     }
 
-    pub fn parse_statement(&mut self) -> Rc<Option<Node<'a>>> {
+    pub fn parse_statement(&mut self) -> NodeRef<'a> {
         let node = match self.tokens.peek() {
             Some(Token::Let) => {
                 self.next_token();
@@ -154,7 +156,7 @@ impl<'a> Parser<'a> {
                         let lhs = self.parse_ident();
                         self.next_token();
                         match self.curr_token {
-                            Some(Token::Assign) => Rc::from(Some(Node {
+                            Some(Token::Assign) => Some(Rc::from(Node {
                                 kind: NodeKind::Let,
                                 left: lhs,
                                 right: self.parse_expression(0),
@@ -167,7 +169,7 @@ impl<'a> Parser<'a> {
             }
             Some(Token::Return) => {
                 self.next_token();
-                Rc::from(Some(Node {
+                Some(Rc::from(Node {
                     kind: NodeKind::Return,
                     left: None.into(),
                     right: self.parse_expression(0),
@@ -186,9 +188,9 @@ impl<'a> Parser<'a> {
         node
     }
 
-    fn parse_ident(&self) -> Rc<Option<Node<'a>>> {
+    fn parse_ident(&self) -> NodeRef<'a> {
         match self.curr_token {
-            Some(Token::Ident(name)) => Rc::from(Some(Node {
+            Some(Token::Ident(name)) => Some(Rc::from(Node {
                 kind: NodeKind::Ident(name),
                 left: None.into(),
                 right: None.into(),
@@ -197,9 +199,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_expression(&mut self, precedence: i32) -> Rc<Option<Node<'a>>> {
+    pub fn parse_expression(&mut self, precedence: i32) -> NodeRef<'a> {
         self.next_token();
-
         let mut lhs = match self.curr_token {
             // these are prefix...
             // INT
@@ -209,7 +210,7 @@ impl<'a> Parser<'a> {
                     Err(_) => panic!(),
                 };
 
-                Rc::from(Some(Node {
+                Some(Rc::from(Node {
                     kind: NodeKind::Int(i),
                     left: None.into(),
                     right: None.into(),
@@ -218,25 +219,25 @@ impl<'a> Parser<'a> {
             // IDENT
             Some(Token::Ident(_)) => self.parse_ident(),
             // TRUE
-            Some(Token::True) => Rc::from(Some(Node {
+            Some(Token::True) => Some(Rc::from(Node {
                 kind: NodeKind::Bool(true),
                 left: None.into(),
                 right: None.into(),
             })),
             // FALSE
-            Some(Token::False) => Rc::from(Some(Node {
+            Some(Token::False) => Some(Rc::from(Node {
                 kind: NodeKind::Bool(false),
                 left: None.into(),
                 right: None.into(),
             })),
             // NEG
-            Some(Token::Minus) => Rc::from(Some(Node {
+            Some(Token::Minus) => Some(Rc::from(Node {
                 kind: NodeKind::Op(Op::Neg),
                 left: None.into(),
                 right: self.parse_expression(0),
             })),
             // NOT
-            Some(Token::Bang) => Rc::from(Some(Node {
+            Some(Token::Bang) => Some(Rc::from(Node {
                 kind: NodeKind::Op(Op::Not),
                 left: None.into(),
                 right: self.parse_expression(0),
@@ -248,7 +249,7 @@ impl<'a> Parser<'a> {
             // BLOCK
             Some(Token::LBrace) => self.parse_block(),
             // FUNCTION
-            Some(Token::Function) => self.parse_fn(),
+            Some(Token::Fn) => self.parse_fn(),
             // IF
             Some(Token::If) => self.parse_if(),
             _ => None.into(),
@@ -287,7 +288,7 @@ impl<'a> Parser<'a> {
                             }
                             self.next_token();
                             let rhs = self.parse_expression(op.precedence());
-                            lhs = Rc::from(Some(Node {
+                            lhs = Some(Rc::from(Node {
                                 kind: NodeKind::Op(op),
                                 left: lhs,
                                 right: rhs,
@@ -308,7 +309,7 @@ mod tests {
     macro_rules! assert_parse {
         ($input:expr, $expected:expr) => {
             let mut parser = Parser::new($input);
-            match Rc::into_inner(parser.parse_statement()).unwrap() {
+            match parser.parse_statement() {
                 Some(ast) => assert_eq!(
                     format!("{}", ast)
                         .chars()

@@ -27,13 +27,14 @@ impl Op {
         }
     }
 }
+pub type NodeRef<'a> = Option<Rc<Node<'a>>>;
 
 pub struct BlockExpression<'a> {
-    pub statements: Vec<Rc<Node<'a>>>,
+    pub statements: Vec<NodeRef<'a>>,
 }
 
 pub struct IfExpression<'a> {
-    pub condition: Rc<Node<'a>>,
+    pub condition: NodeRef<'a>,
 }
 
 pub struct FnExpression<'a> {
@@ -41,7 +42,7 @@ pub struct FnExpression<'a> {
 }
 
 pub struct CallExpression<'a> {
-    pub args: Vec<Rc<Node<'a>>>,
+    pub args: Vec<NodeRef<'a>>,
 }
 
 pub enum NodeKind<'a> {
@@ -55,14 +56,13 @@ pub enum NodeKind<'a> {
     Block(BlockExpression<'a>),
     Fn(FnExpression<'a>),
     Call(CallExpression<'a>),
-    // TODO expression list?
 }
 
-// TODO move rc into option?
+
 pub struct Node<'a> {
     pub kind: NodeKind<'a>,
-    pub left: Rc<Option<Node<'a>>>,
-    pub right: Rc<Option<Node<'a>>>,
+    pub left: NodeRef<'a>,
+    pub right: NodeRef<'a>,
 }
 
 impl fmt::Debug for NodeKind<'_> {
@@ -111,11 +111,11 @@ impl fmt::Display for Node<'_> {
             match &node.kind {
                 NodeKind::Block(block) => {
                     for stmt in &block.statements {
-                        fmt_with_indent(stmt, f, indent + 1)?;
+                        stmt.as_ref().map(|node| fmt_with_indent(&node, f, indent + 1));
                     }
                 }
                 NodeKind::If(c) => {
-                    fmt_with_indent(&c.condition, f, indent + 1)?;
+                    c.condition.as_ref().map(|node| fmt_with_indent(&node, f, indent + 1));
                     match node.left.as_ref().clone() {
                         Some(node) => {
                             f.write_str("Then\n")?;
@@ -138,9 +138,9 @@ impl fmt::Display for Node<'_> {
                         NodeKind::Ident(ident) => {
                             f.write_fmt(format_args!("{}\n", ident))?;
                             for arg in c.args.iter() {
-                                fmt_with_indent(arg, f, indent + 1)?;
+                                arg.as_ref().map(|node| fmt_with_indent(&node, f, indent + 1));
                             }
-                            return Ok(())
+                            return Ok(());
                         }
                         _ => (),
                     },
