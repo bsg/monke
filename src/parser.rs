@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use std::rc::Rc;
 
-use crate::ast::{*};
+use crate::ast::*;
 use crate::lexer::{Lexer, Token, Tokens};
 
 pub struct Parser<'a> {
@@ -21,17 +21,11 @@ impl<'a> Parser<'a> {
 
     // TODO either use the iter or this. both makes things confusing
     fn next_token(&mut self) {
-        loop {
-            self.curr_token = self.tokens.next();
-            self.peek_token = match self.tokens.peek() {
-                Some(token) => Some(*token),
-                None => None,
-            };
-            if let Some(Token::Semicolon) = self.curr_token {
-            } else {
-                break;
-            }
-        }
+        self.curr_token = self.tokens.next();
+        self.peek_token = match self.tokens.peek() {
+            Some(token) => Some(*token),
+            None => None,
+        };
     }
 
     fn parse_block(&mut self) -> NodeRef<'a> {
@@ -49,11 +43,11 @@ impl<'a> Parser<'a> {
                 self.next_token(); // Consume RBrace
                 Some(Rc::from(Node {
                     kind: NodeKind::Block(BlockExpression { statements }),
-                    left: None.into(),
-                    right: None.into(),
+                    left: None,
+                    right: None,
                 }))
             }
-            _ => None.into(),
+            _ => None,
         }
     }
 
@@ -77,7 +71,6 @@ impl<'a> Parser<'a> {
                 assert_ne!(self.curr_token, Some(Token::RBrace));
                 let rhs = self.parse_block();
 
-                
                 match lhs {
                     Some(_) => Some(Rc::from(Node {
                         kind: NodeKind::If(IfExpression {
@@ -116,32 +109,45 @@ impl<'a> Parser<'a> {
 
                 Some(Rc::from(Node {
                     kind: NodeKind::Fn(FnExpression { args }),
-                    left: None.into(),
+                    left: None,
                     right: body,
                 }))
             }
             (Some(_), Some(_)) => todo!(),
-            (_, _) => None.into(),
+            (_, _) => None,
         }
     }
 
     fn parse_call(&mut self, rhs: NodeRef<'a>) -> NodeRef<'a> {
         let mut args: Vec<NodeRef<'a>> = Vec::new();
+        let ident;
 
-        self.next_token();
+        match self.parse_ident() {
+            Some(node) => match node.kind {
+                NodeKind::Ident(id) => ident = id,
+                _ => todo!(),
+            },
+            None => todo!(),
+        }
+
         loop {
             match self.parse_expression(0) {
                 Some(node) => {
                     args.push(node.into());
+                    match self.peek_token {
+                        Some(Token::Comma) => self.next_token(),
+                        _ => break,
+                    }
                 }
                 None => break,
             }
         }
+
         assert_eq!(self.curr_token, Some(Token::RParen));
 
         Some(Rc::from(Node {
-            kind: NodeKind::Call(CallExpression { args }),
-            left: None.into(),
+            kind: NodeKind::Call(CallExpression { ident, args }),
+            left: None,
             right: rhs,
         }))
     }
@@ -171,12 +177,12 @@ impl<'a> Parser<'a> {
                 self.next_token();
                 Some(Rc::from(Node {
                     kind: NodeKind::Return,
-                    left: None.into(),
+                    left: None,
                     right: self.parse_expression(0),
                 }))
             }
             Some(_) => self.parse_expression(0),
-            None => None.into(),
+            None => None,
         };
 
         loop {
@@ -192,8 +198,8 @@ impl<'a> Parser<'a> {
         match self.curr_token {
             Some(Token::Ident(name)) => Some(Rc::from(Node {
                 kind: NodeKind::Ident(name),
-                left: None.into(),
-                right: None.into(),
+                left: None,
+                right: None,
             })),
             _ => todo!(),
         }
@@ -212,8 +218,8 @@ impl<'a> Parser<'a> {
 
                 Some(Rc::from(Node {
                     kind: NodeKind::Int(i),
-                    left: None.into(),
-                    right: None.into(),
+                    left: None,
+                    right: None,
                 }))
             }
             // IDENT
@@ -221,25 +227,25 @@ impl<'a> Parser<'a> {
             // TRUE
             Some(Token::True) => Some(Rc::from(Node {
                 kind: NodeKind::Bool(true),
-                left: None.into(),
-                right: None.into(),
+                left: None,
+                right: None,
             })),
             // FALSE
             Some(Token::False) => Some(Rc::from(Node {
                 kind: NodeKind::Bool(false),
-                left: None.into(),
-                right: None.into(),
+                left: None,
+                right: None,
             })),
             // NEG
             Some(Token::Minus) => Some(Rc::from(Node {
                 kind: NodeKind::Op(Op::Neg),
-                left: None.into(),
+                left: None,
                 right: self.parse_expression(0),
             })),
             // NOT
             Some(Token::Bang) => Some(Rc::from(Node {
                 kind: NodeKind::Op(Op::Not),
-                left: None.into(),
+                left: None,
                 right: self.parse_expression(0),
             })),
             // LET
@@ -252,7 +258,7 @@ impl<'a> Parser<'a> {
             Some(Token::Fn) => self.parse_fn(),
             // IF
             Some(Token::If) => self.parse_if(),
-            _ => None.into(),
+            _ => None,
         };
 
         loop {

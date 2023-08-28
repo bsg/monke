@@ -42,6 +42,7 @@ pub struct FnExpression<'a> {
 }
 
 pub struct CallExpression<'a> {
+    pub ident: &'a str,
     pub args: Vec<NodeRef<'a>>,
 }
 
