@@ -565,7 +565,15 @@ mod tests {
     }
 
     #[test]
-    fn fn_call() {
+    fn fn_call_noarg() {
+        assert_parse!(
+            "f()",
+            "Call f"
+        );
+    }
+
+    #[test]
+    fn fn_call_with_args() {
         assert_parse!(
             "f(2, a+1)",
             "Call f\
@@ -574,7 +582,10 @@ mod tests {
                 --Ident(a)\
                 --Int(1)"
         );
+    }
 
+    #[test]
+    fn fn_call_with_if_arg() {
         assert_parse!(
             "f(2, if(x){1}{2})",
             "Call f\
