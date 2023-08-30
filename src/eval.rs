@@ -51,9 +51,7 @@ impl Eval {
                         Op::Assign => todo!(),
                         Op::Eq => todo!(),
                         Op::NotEq => todo!(),
-                        Op::Lt => todo!(),
-                        Op::Gt => todo!(),
-                        Op::Add | Op::Sub | Op::Mul | Op::Div => {
+                        Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt => {
                             // FIXME ugly
                             match (lhs, rhs) {
                                 (Value::Int(a), Value::Int(b)) => match op {
@@ -61,6 +59,8 @@ impl Eval {
                                     Op::Sub => Value::Int(a - b),
                                     Op::Mul => Value::Int(a * b),
                                     Op::Div => Value::Int(a / b),
+                                    Op::Lt => Value::Bool(a < b),
+                                    Op::Gt => Value::Bool(a > b),
                                     _ => unreachable!(),
                                 },
                                 _ => todo!(),
@@ -107,7 +107,17 @@ mod tests {
     }
 
     #[test]
+    fn bool_literal() {
+        assert_eval!("false", Bool(false));
+    }
+
+    #[test]
     fn numerical() {
         assert_eval!("5 + -10 * 2", Int(-15));
+    }
+
+    #[test]
+    fn int_comparison() {
+        assert_eval!("1 > 5", Bool(false));
     }
 }
