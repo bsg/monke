@@ -20,10 +20,16 @@ impl std::fmt::Display for Value {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug)]
+pub struct Error {
+    message: String,
+}
+
+#[derive(Debug)]
 pub enum EvalResult {
     NonReturn(Value),
     Return(Value),
+    Err(Error),
 }
 
 impl EvalResult {
@@ -31,6 +37,7 @@ impl EvalResult {
         match self {
             EvalResult::NonReturn(val) => val,
             EvalResult::Return(val) => val,
+            EvalResult::Err(_) => todo!(),
         }
     }
 }
@@ -56,7 +63,10 @@ impl Eval {
                             Int(i) => NonReturn(Int(-i)),
                             _ => todo!(),
                         },
-                        Op::Not => todo!(),
+                        Op::Not => match rhs.unwrap() {
+                            Bool(b) => NonReturn(Bool(!b)),
+                            _ => todo!(),
+                        },
                         _ => unreachable!(),
                     }
                 }
@@ -87,9 +97,9 @@ impl Eval {
                     }
                 }
                 NodeKind::Let => todo!(),
-                NodeKind::Return => todo!(),
-                NodeKind::If(ifExpr) => {
-                    match Self::eval_subtree(ifExpr.condition.to_owned()).unwrap() {
+                NodeKind::Return => Return(Self::eval_subtree(node.right.to_owned()).unwrap()),
+                NodeKind::If(if_expr) => {
+                    match Self::eval_subtree(if_expr.condition.to_owned()).unwrap() {
                         Nil => todo!(),
                         Int(_) => todo!(),
                         Bool(cond) => {
@@ -152,6 +162,16 @@ mod tests {
     }
 
     #[test]
+    fn neg() {
+        assert_eval_stmt!("-5", Int(-5));
+    }
+
+    #[test]
+    fn not() {
+        assert_eval_stmt!("!false", Bool(true));
+    }
+
+    #[test]
     fn int_comparison() {
         assert_eval_stmt!("1 > 5", Bool(false));
     }
@@ -188,6 +208,11 @@ mod tests {
     #[test]
     fn block_multi_statement() {
         assert_eval_stmt!("{1;2;3}", Int(3));
+    }
+
+    #[test]
+    fn block_with_early_return() {
+        assert_eval_stmt!("{1;return 2;3}", Int(3));
     }
 
     #[test]
