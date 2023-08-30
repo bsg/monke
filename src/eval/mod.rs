@@ -1,7 +1,6 @@
 mod error;
 mod result;
-
-use std::{collections::BTreeMap, rc::Rc};
+mod env;
 
 use crate::{
     ast::{NodeKind, NodeRef, Op},
