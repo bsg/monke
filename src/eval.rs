@@ -1,5 +1,5 @@
 use crate::{
-    ast::{NodeKind, NodeRef},
+    ast::{NodeKind, NodeRef, Op},
     parser::Parser,
 };
 
@@ -23,7 +23,7 @@ impl Value {
 impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::Nil => todo!(),
+            Value::Nil => f.write_str("nil"),
             Value::Int(val) => f.write_fmt(format_args!("{}", val)),
             Value::Bool(val) => f.write_fmt(format_args!("{}", val)),
         }
@@ -66,68 +66,81 @@ impl std::fmt::Display for EvalResult {
 pub struct Eval {}
 
 impl Eval {
-    fn eval_subtree(node_ref: NodeRef) -> EvalResult {
-        use crate::ast::Op;
+    fn eval_infix(op: &Op, lhs: EvalResult, rhs: EvalResult) -> EvalResult {
         use EvalResult::*;
         use Value::*;
+        match (lhs, rhs) {
+            (Val(lhs), Val(rhs))
+            | (Val(lhs), Return(rhs))
+            | (Return(lhs), Val(rhs))
+            | (Return(lhs), Return(rhs)) => {
+                match op {
+                    Op::Assign => todo!(),
+                    Op::Eq => Val(Bool(lhs == rhs)),
+                    Op::NotEq => Val(Bool(lhs != rhs)),
+                    Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt => {
+                        // FIXME ugly
+                        match (lhs, rhs) {
+                            (Int(a), Int(b)) => match op {
+                                Op::Add => Val(Int(a + b)),
+                                Op::Sub => Val(Int(a - b)),
+                                Op::Mul => Val(Int(a * b)),
+                                Op::Div => Val(Int(a / b)),
+                                Op::Lt => Val(Bool(a < b)),
+                                Op::Gt => Val(Bool(a > b)),
+                                _ => unreachable!(),
+                            },
+                            p @ _ => err!(
+                                "unknown operator {} {} {}",
+                                p.0.type_str(),
+                                op,
+                                p.1.type_str()
+                            ),
+                        }
+                    }
+                    Op::Neg | Op::Not | Op::Call => unreachable!(),
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
 
+    fn eval_prefix(op: &Op, rhs: Value) -> EvalResult {
+        use EvalResult::*;
+        use Value::*;
+        match op {
+            Op::Neg => match rhs {
+                Int(i) => Val(Int(-i)),
+                _ => err!("unknown operator {}{}", op, rhs.type_str()),
+            },
+            Op::Not => match rhs {
+                Bool(b) => Val(Bool(!b)),
+                _ => err!("unknown operator {}{}", op, rhs.type_str()),
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn eval_subtree(node_ref: NodeRef) -> EvalResult {
+        use EvalResult::*;
+        use Value::*;
         match node_ref {
             Some(node) => match &node.kind {
                 NodeKind::Ident(_) => todo!(),
                 NodeKind::Int(i) => Val(Int(*i)),
                 NodeKind::Bool(b) => Val(Bool(*b)),
                 NodeKind::PrefixOp(op) => match Self::eval_subtree(node.right.to_owned()) {
-                    Val(rhs) | Return(rhs) => match op {
-                        Op::Neg => match rhs {
-                            Int(i) => Val(Int(-i)),
-                            _ => err!("unknown operator -{}", op),
-                        },
-                        Op::Not => match rhs {
-                            Bool(b) => Val(Bool(!b)),
-                            _ => todo!(),
-                        },
-                        _ => unreachable!(),
-                    },
                     err @ Err(_) => err,
+                    Val(val) | Return(val) => Self::eval_prefix(op, val),
                 },
                 NodeKind::InfixOp(op) => {
                     match (
                         Self::eval_subtree(node.left.to_owned()),
                         Self::eval_subtree(node.right.to_owned()),
                     ) {
-                        (Val(lhs), Val(rhs))
-                        | (Val(lhs), Return(rhs))
-                        | (Return(lhs), Val(rhs))
-                        | (Return(lhs), Return(rhs)) => {
-                            match op {
-                                Op::Assign => todo!(),
-                                Op::Eq => Val(Bool(lhs == rhs)),
-                                Op::NotEq => Val(Bool(lhs != rhs)),
-                                Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt => {
-                                    // FIXME ugly
-                                    match (lhs, rhs) {
-                                        (Int(a), Int(b)) => match op {
-                                            Op::Add => Val(Int(a + b)),
-                                            Op::Sub => Val(Int(a - b)),
-                                            Op::Mul => Val(Int(a * b)),
-                                            Op::Div => Val(Int(a / b)),
-                                            Op::Lt => Val(Bool(a < b)),
-                                            Op::Gt => Val(Bool(a > b)),
-                                            _ => unreachable!(),
-                                        },
-                                        p @ _ => err!(
-                                            "unknown operator {} {} {}",
-                                            p.0.type_str(),
-                                            op,
-                                            p.1.type_str()
-                                        ),
-                                    }
-                                }
-                                Op::Neg | Op::Not | Op::Call => unreachable!(),
-                            }
-                        }
-                        p @ (Err(_), _) => return p.0,
-                        p @ (_, Err(_)) => return p.1,
+                        p @ (Err(_), _) => p.0,
+                        p @ (_, Err(_)) => p.1,
+                        (lhs, rhs) => Self::eval_infix(op, lhs, rhs),
                     }
                 }
                 NodeKind::Let => todo!(),
@@ -137,8 +150,6 @@ impl Eval {
                 },
                 NodeKind::If(if_expr) => match Self::eval_subtree(if_expr.condition.to_owned()) {
                     Val(val) | Return(val) => match val {
-                        Nil => todo!(),
-                        Int(_) => todo!(),
                         Bool(cond) => {
                             if cond {
                                 Self::eval_subtree(node.left.to_owned())
@@ -146,8 +157,10 @@ impl Eval {
                                 Self::eval_subtree(node.right.to_owned())
                             }
                         }
+                        Nil => err!("expected condition after if"),
+                        _ => Self::eval_subtree(node.left.to_owned())
                     },
-                    Err(_) => todo!(),
+                    err @ Err(_) => err,
                 },
                 NodeKind::Block(block) => {
                     let mut rv = Val(Nil);
