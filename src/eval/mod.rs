@@ -1,67 +1,14 @@
+mod error;
+mod result;
+
+use std::{collections::BTreeMap, rc::Rc};
+
 use crate::{
     ast::{NodeKind, NodeRef, Op},
-    parser::Parser,
+    parser::Parser, err,
 };
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum Value {
-    Nil,
-    Int(i64),
-    Bool(bool),
-}
-
-impl Value {
-    fn type_str(&self) -> &str {
-        match self {
-            Value::Nil => "Nil",
-            Value::Int(_) => "Int",
-            Value::Bool(_) => "Bool",
-        }
-    }
-}
-
-impl std::fmt::Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Value::Nil => f.write_str("nil"),
-            Value::Int(val) => f.write_fmt(format_args!("{}", val)),
-            Value::Bool(val) => f.write_fmt(format_args!("{}", val)),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct Error {
-    message: String,
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.message)
-    }
-}
-
-macro_rules! err {
-    ($($arg:tt)*) => {
-        EvalResult::Err(Error { message: format!($($arg)*) })
-    };
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum EvalResult {
-    Val(Value),
-    Return(Value),
-    Err(Error),
-}
-
-impl std::fmt::Display for EvalResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Val(val) | Self::Return(val) => f.write_fmt(format_args!("{}", val)),
-            Self::Err(err) => f.write_fmt(format_args!("error: {}", err)),
-        }
-    }
-}
+use self::{error::Error, result::{Value, EvalResult}};
 
 pub struct Eval {}
 
@@ -274,5 +221,10 @@ mod tests {
     #[test]
     fn if_statement() {
         assert_eval_stmt!("if (1 < 2) {1} {2}", Val(Int(1)));
+    }
+
+    #[test]
+    fn eval_block_with_let() {
+        assert_eval_stmt!("let x = 1; x", Val(Int(1)));
     }
 }
