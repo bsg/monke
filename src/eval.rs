@@ -49,8 +49,8 @@ impl Eval {
 
                     match op {
                         Op::Assign => todo!(),
-                        Op::Eq => todo!(),
-                        Op::NotEq => todo!(),
+                        Op::Eq => Value::Bool(lhs == rhs),
+                        Op::NotEq => Value::Bool(lhs != rhs),
                         Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt => {
                             // FIXME ugly
                             match (lhs, rhs) {
@@ -119,5 +119,29 @@ mod tests {
     #[test]
     fn int_comparison() {
         assert_eval!("1 > 5", Bool(false));
+    }
+
+    #[test]
+    fn equal_int_int() {
+        assert_eval!("1 == 1", Bool(true));
+        assert_eval!("1 == 2", Bool(false));
+    }
+
+    #[test]
+    fn not_equal_int_int() {
+        assert_eval!("1 != 2", Bool(true));
+        assert_eval!("2 != 2", Bool(false));
+    }
+
+    #[test]
+    fn equal_bool_bool() {
+        assert_eval!("true == true", Bool(true));
+        assert_eval!("true == false", Bool(false));
+    }
+
+    #[test]
+    fn not_equal_bool_bool() {
+        assert_eval!("true != false", Bool(true));
+        assert_eval!("true != true", Bool(false));
     }
 }
