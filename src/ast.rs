@@ -30,6 +30,7 @@ impl Op {
 pub type NodeRef<'a> = Option<Rc<Node<'a>>>;
 
 pub struct BlockExpression<'a> {
+    // TODO replace with array?
     pub statements: Vec<NodeRef<'a>>,
 }
 
@@ -38,11 +39,13 @@ pub struct IfExpression<'a> {
 }
 
 pub struct FnExpression<'a> {
+    // TODO replace with array?
     pub args: Vec<&'a str>,
 }
 
 pub struct CallExpression<'a> {
     pub ident: &'a str,
+    // TODO replace with array?
     pub args: Vec<NodeRef<'a>>,
 }
 
