@@ -16,6 +16,25 @@ pub enum Op {
     Call,
 }
 
+impl std::fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Op::Assign => f.write_str("="),
+            Op::Eq => f.write_str("=="),
+            Op::NotEq => f.write_str("!="),
+            Op::Lt => f.write_str("<"),
+            Op::Gt => f.write_str(">"),
+            Op::Add => f.write_str("+"),
+            Op::Sub => f.write_str("-"),
+            Op::Mul => f.write_str("*"),
+            Op::Div => f.write_str("/"),
+            Op::Neg => f.write_str("-"),
+            Op::Not => f.write_str("!"),
+            Op::Call => f.write_str(""),
+        }
+    }
+}
+
 impl Op {
     pub fn precedence(&self) -> i32 {
         match self {
