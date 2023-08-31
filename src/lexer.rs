@@ -156,13 +156,13 @@ impl<'a> Tokens<'a> {
                             Err(_) => todo!(),
                         },
                     };
-                },
+                }
                 (b'0'..=b'9') => {
                     return match str::from_utf8(self.read_number()) {
                         Ok(s) => Int(s),
                         Err(_) => todo!(),
                     }
-                },
+                }
                 _ => Illegal,
             },
             None => Eof,

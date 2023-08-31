@@ -212,7 +212,9 @@ impl<'a> Parser<'a> {
             // FALSE
             Some(Token::False) => node!(NodeKind::Bool(false), None, None),
             // NEG
-            Some(Token::Minus) => node!(NodeKind::PrefixOp(Op::Neg), None, self.parse_expression(0)),
+            Some(Token::Minus) => {
+                node!(NodeKind::PrefixOp(Op::Neg), None, self.parse_expression(0))
+            }
             // NOT
             Some(Token::Bang) => node!(NodeKind::PrefixOp(Op::Not), None, self.parse_expression(0)),
             // LET
@@ -566,10 +568,7 @@ mod tests {
 
     #[test]
     fn fn_call_noarg() {
-        assert_parse!(
-            "f()",
-            "Call f"
-        );
+        assert_parse!("f()", "Call f");
     }
 
     #[test]

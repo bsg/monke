@@ -1,48 +1,49 @@
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use super::result::Value;
 
 pub struct Env<'a> {
-    store: BTreeMap<&'a str, Value>,
-    parent: Option<&'a mut Env<'a>>,
+    // TODO &str instead of String
+    store: BTreeMap<String, Value>,
+    outer: Option<Rc<RefCell<Env<'a>>>>,
 }
 
 impl<'a> Env<'a> {
-    pub fn new() -> Env<'a> {
-        Env {
+    pub fn new() -> Rc<RefCell<Env<'a>>> {
+        Rc::new(RefCell::new(Env {
             store: BTreeMap::new(),
-            parent: None,
-        }
+            outer: None,
+        }))
     }
 
-    pub fn from(parent: &'a mut Env<'a>) -> Env<'a> {
-        let mut env = Self::new();
-        env.parent = Some(parent);
+    pub fn from(outer: Rc<RefCell<Env<'a>>>) -> Rc<RefCell<Env<'a>>> {
+        let env = Self::new();
+        env.borrow_mut().outer = Some(outer);
         env
     }
 
-    pub fn bind_local(&mut self, name: &'a str, val: Value) {
+    pub fn bind_local(&mut self, name: String, val: Value) {
         self.store.insert(name, val);
     }
 
-    pub fn bind(&mut self, name: &'a str, val: Value) -> bool {
-        if self.store.contains_key(name) {
+    pub fn bind(&mut self, name: String, val: Value) -> bool {
+        if self.store.contains_key(&name) {
             self.store.insert(name, val);
             return true;
         } else {
-            match &mut self.parent {
-                Some(parent) => parent.bind(name, val),
+            match &mut self.outer {
+                Some(outer) => outer.borrow_mut().bind(name, val),
                 None => false,
             }
         }
     }
 
-    pub fn get(&'a self, name: &'a str) -> Option<&'a Value> {
+    pub fn get(&self, name: &String) -> Option<Value> {
         if self.store.contains_key(name) {
-            self.store.get(name)
+            self.store.get(name).copied()
         } else {
-            match &self.parent {
-                Some(parent) => parent.get(name),
+            match &self.outer {
+                Some(outer) => outer.borrow().get(name),
                 None => None,
             }
         }
@@ -57,21 +58,21 @@ mod tests {
 
     #[test]
     fn env() {
-        let mut env = Env::new();
-        env.bind_local("x", Int(5));
+        let env = Env::new();
+        env.borrow_mut().bind_local("x".to_string(), Int(5));
 
-        assert_eq!(env.get("x"), Some(&Int(5)));
+        assert_eq!(env.borrow().get(&"x".to_string()), Some(Int(5)));
     }
 
     #[test]
     fn nested_envs() {
-        let mut outer = Env::new();
-        outer.bind_local("x", Int(5));
-        outer.bind_local("y", Int(1));
+        let outer = Env::new();
+        outer.borrow_mut().bind_local("x".to_string(), Int(5));
+        outer.borrow_mut().bind_local("y".to_string(), Int(1));
 
-        let mut inner = Env::from(&mut outer);
-        inner.bind("y", Bool(true));
-        assert_eq!(inner.get("x"), Some(&Int(5)));
-        assert_eq!(inner.get("y"), Some(&Bool(true)));
+        let inner = Env::from(outer);
+        assert!(inner.borrow_mut().bind("y".to_string(), Bool(true)));
+        assert_eq!(inner.borrow().get(&"x".to_string()), Some(Int(5)));
+        assert_eq!(inner.borrow().get(&"y".to_string()), Some(Bool(true)));
     }
 }

@@ -82,7 +82,6 @@ pub enum NodeKind<'a> {
     Call(CallExpression<'a>),
 }
 
-
 pub struct Node<'a> {
     pub kind: NodeKind<'a>,
     pub left: NodeRef<'a>,
@@ -137,11 +136,14 @@ impl fmt::Display for Node<'_> {
             match &node.kind {
                 NodeKind::Block(block) => {
                     for stmt in &block.statements {
-                        stmt.as_ref().map(|node| fmt_with_indent(&node, f, indent + 1));
+                        stmt.as_ref()
+                            .map(|node| fmt_with_indent(&node, f, indent + 1));
                     }
                 }
                 NodeKind::If(c) => {
-                    c.condition.as_ref().map(|node| fmt_with_indent(&node, f, indent + 1));
+                    c.condition
+                        .as_ref()
+                        .map(|node| fmt_with_indent(&node, f, indent + 1));
                     match node.left.as_ref().clone() {
                         Some(node) => {
                             f.write_str("Then\n")?;
@@ -164,7 +166,8 @@ impl fmt::Display for Node<'_> {
                         NodeKind::Ident(ident) => {
                             f.write_fmt(format_args!("{}\n", ident))?;
                             for arg in c.args.iter() {
-                                arg.as_ref().map(|node| fmt_with_indent(&node, f, indent + 1));
+                                arg.as_ref()
+                                    .map(|node| fmt_with_indent(&node, f, indent + 1));
                             }
                             return Ok(());
                         }

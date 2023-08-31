@@ -1,10 +1,10 @@
 use repl::Repl;
 
-mod parser;
-mod lexer;
-mod repl;
 mod ast;
 mod eval;
+mod lexer;
+mod parser;
+mod repl;
 
 fn main() {
     println!("monke go");

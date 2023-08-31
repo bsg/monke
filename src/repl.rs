@@ -9,12 +9,14 @@ impl Repl {
         let mut buffer = String::new();
         let stdin = io::stdin();
         let mut stdout = io::stdout();
+
+        let eval = Eval::new();
         loop {
             print!("> ");
             stdout.flush().unwrap();
             match stdin.read_line(&mut buffer) {
                 Ok(_) => {
-                    println!("{}", Eval::eval_statement(&buffer));
+                    println!("{}", eval.eval(&buffer));
                 }
                 Err(_) => break,
             }
