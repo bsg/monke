@@ -2,44 +2,46 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use super::result::Value;
 
+pub type EnvRef<'a> = Rc<RefCell<Env<'a>>>;
+
 pub struct Env<'a> {
-    store: BTreeMap<&'a str, Value<'a>>,
-    outer: Option<Rc<RefCell<Env<'a>>>>,
+    store: RefCell<BTreeMap<&'a str, Value<'a>>>,
+    outer: Option<EnvRef<'a>>,
 }
 
 impl<'a> Env<'a> {
     pub fn new() -> Rc<RefCell<Env<'a>>> {
         Rc::new(RefCell::new(Env {
-            store: BTreeMap::new(),
+            store: RefCell::new(BTreeMap::new()),
             outer: None,
         }))
     }
 
-    pub fn from(outer: Rc<RefCell<Env<'a>>>) -> Rc<RefCell<Env<'a>>> {
+    pub fn from(outer: EnvRef<'a>) -> EnvRef<'a> {
         let env = Self::new();
         env.borrow_mut().outer = Some(outer);
         env
     }
 
-    pub fn bind_local(&mut self, name: &'a str, val: Value<'a>) {
-        self.store.insert(name, val);
+    pub fn bind_local(&self, name: &'a str, val: Value<'a>) {
+        self.store.borrow_mut().insert(name, val);
     }
 
-    pub fn bind(&mut self, name: &'a str, val: Value<'a>) -> bool {
-        if self.store.contains_key(&name) {
-            self.store.insert(name, val);
+    pub fn bind(&self, name: &'a str, val: Value<'a>) -> bool {
+        if self.store.borrow().contains_key(&name) {
+            self.store.borrow_mut().insert(name, val);
             return true;
         } else {
-            match &mut self.outer {
-                Some(outer) => outer.borrow_mut().bind(name, val),
+            match &self.outer {
+                Some(outer) => outer.borrow().bind(name, val),
                 None => false,
             }
         }
     }
 
     pub fn get(&self, name: &'a str) -> Option<Value<'a>> {
-        if self.store.contains_key(name) {
-            self.store.get(name).cloned()
+        if self.store.borrow().contains_key(name) {
+            self.store.borrow_mut().get(name).cloned()
         } else {
             match &self.outer {
                 Some(outer) => outer.borrow().get(name),

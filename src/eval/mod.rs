@@ -2,7 +2,7 @@ mod env;
 mod error;
 mod result;
 
-use std::{cell::RefCell, rc::Rc};
+use std::rc::Rc;
 
 use crate::{
     ast::{BlockExpression, NodeKind, NodeRef, Op},
@@ -11,13 +11,13 @@ use crate::{
 };
 
 use self::{
-    env::Env,
+    env::{Env, EnvRef},
     error::Error,
     result::{EvalResult, Value},
 };
 
 pub struct Eval<'a> {
-    env: Rc<RefCell<Env<'a>>>,
+    env: EnvRef<'a>,
 }
 
 use EvalResult::*;
@@ -79,7 +79,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_block(env: Rc<RefCell<Env<'a>>>, block: Rc<BlockExpression<'a>>) -> EvalResult<'a> {
+    fn eval_block(env: EnvRef<'a>, block: Rc<BlockExpression<'a>>) -> EvalResult<'a> {
         let mut rv = Val(Nil);
         let env = Env::from(env);
         for stmt in block.statements.to_owned() {
@@ -94,7 +94,7 @@ impl<'a> Eval<'a> {
     }
 
     fn eval_assign(
-        env: Rc<RefCell<Env<'a>>>,
+        env: EnvRef<'a>,
         left: NodeRef<'a>,
         right: NodeRef<'a>,
         is_let: bool,
@@ -124,7 +124,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_ast(env: Rc<RefCell<Env<'a>>>, node_ref: NodeRef<'a>) -> EvalResult<'a> {
+    fn eval_ast(env: EnvRef<'a>, node_ref: NodeRef<'a>) -> EvalResult<'a> {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
                 NodeKind::Ident(name) => match env.borrow().get(&name) {
@@ -204,7 +204,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_statement(env: Rc<RefCell<Env<'a>>>, stmt: &'a str) -> EvalResult<'a> {
+    fn eval_statement(env: EnvRef<'a>, stmt: &'a str) -> EvalResult<'a> {
         let mut parser = Parser::new(stmt);
         Self::eval_ast(env, parser.parse_statement())
     }
