@@ -4,10 +4,10 @@ use std::rc::Rc;
 use crate::ast::*;
 use crate::lexer::{Lexer, Token, Tokens};
 
-pub struct Parser<'a> {
-    tokens: Peekable<Tokens<'a>>,
-    curr_token: Option<Token<'a>>,
-    peek_token: Option<Token<'a>>,
+pub struct Parser {
+    tokens: Peekable<Tokens>,
+    curr_token: Option<Token>,
+    peek_token: Option<Token>,
 }
 
 macro_rules! node {
@@ -20,7 +20,7 @@ macro_rules! node {
     };
 }
 
-impl<'a> Parser<'a> {
+impl Parser {
     pub fn new(input: &str) -> Parser {
         Parser {
             tokens: Lexer::new(input.clone()).tokens().peekable(),
@@ -31,16 +31,16 @@ impl<'a> Parser<'a> {
 
     fn next_token(&mut self) {
         self.curr_token = self.tokens.next();
-        self.peek_token = self.tokens.peek().copied();
+        self.peek_token = self.tokens.peek().cloned();
     }
 
-    fn parse_block(&mut self) -> NodeRef<'a> {
+    fn parse_block(&mut self) -> NodeRef {
         let mut statements: Vec<NodeRef> = Vec::new();
 
         match self.curr_token {
             Some(Token::LBrace) => {
-                while let Some(stmt) = self.parse_statement() {
-                    statements.push(Some(stmt));
+                while let Some(stmt) = self.parse_statement().as_ref() {
+                    statements.push(Some(stmt.clone()));
                 }
 
                 assert_eq!(self.curr_token, Some(Token::RBrace));
@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
     }
 
     /// caller must ensure current token is If
-    fn parse_if(&mut self) -> NodeRef<'a> {
+    fn parse_if(&mut self) -> NodeRef {
         assert_eq!(self.curr_token, Some(Token::If));
         match self.parse_expression(0) {
             Some(cond) => {
@@ -84,15 +84,15 @@ impl<'a> Parser<'a> {
     }
 
     // caller must ensure current token is Fn
-    fn parse_fn(&mut self) -> NodeRef<'a> {
-        let mut args: Vec<&'a str> = Vec::new();
+    fn parse_fn(&mut self) -> NodeRef {
+        let mut args: Vec<Rc<str>> = Vec::new();
 
-        match (self.curr_token, self.peek_token) {
+        match (self.curr_token.clone(), self.peek_token.clone()) {
             (Some(Token::Fn), Some(Token::LParen)) => {
                 self.next_token();
                 self.next_token();
                 loop {
-                    match self.curr_token {
+                    match self.curr_token.clone() {
                         Some(Token::Ident(name)) => args.push(name),
                         Some(Token::Comma) => (),
                         _ => break,
@@ -111,13 +111,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_call(&mut self, rhs: NodeRef<'a>) -> NodeRef<'a> {
-        let mut args: Vec<NodeRef<'a>> = Vec::new();
+    fn parse_call(&mut self, rhs: NodeRef) -> NodeRef {
+        let mut args: Vec<NodeRef> = Vec::new();
         let ident;
 
         match self.parse_ident() {
-            Some(node) => match node.kind {
-                NodeKind::Ident(id) => ident = id,
+            Some(node) => match &node.kind {
+                NodeKind::Ident(id) => ident = id.clone(),
                 _ => todo!(),
             },
             None => todo!(),
@@ -136,7 +136,7 @@ impl<'a> Parser<'a> {
         node!(NodeKind::Call(CallExpression { ident, args }), None, rhs)
     }
 
-    pub fn parse_statement(&mut self) -> NodeRef<'a> {
+    pub fn parse_statement(&mut self) -> NodeRef {
         let node = match self.tokens.peek() {
             Some(Token::Let) => {
                 self.next_token();
@@ -170,16 +170,16 @@ impl<'a> Parser<'a> {
         node
     }
 
-    fn parse_ident(&self) -> NodeRef<'a> {
-        match self.curr_token {
-            Some(Token::Ident(name)) => node!(NodeKind::Ident(name), None, None),
+    fn parse_ident(&self) -> NodeRef {
+        match &self.curr_token {
+            Some(Token::Ident(name)) => node!(NodeKind::Ident(name.clone()), None, None),
             _ => todo!(),
         }
     }
 
-    pub fn parse_expression(&mut self, precedence: i32) -> NodeRef<'a> {
+    pub fn parse_expression(&mut self, precedence: i32) -> NodeRef {
         self.next_token();
-        let mut lhs = match self.curr_token {
+        let mut lhs = match &self.curr_token {
             // these are prefix...
             // INT
             Some(Token::Int(s)) => {

@@ -11,17 +11,16 @@ impl Repl {
         let mut stdout = io::stdout();
 
         let eval = Eval::new();
-        eval.eval("1");
-        // loop {
-        //     print!("> ");
-        //     stdout.flush().unwrap();
-        //     match stdin.read_line(&mut buffer) {
-        //         Ok(_) => {
-        //             println!("{}", eval.eval(&buffer));
-        //         }
-        //         Err(_) => break,
-        //     }
-        //     buffer.clear();
-        // }
+        loop {
+            print!("> ");
+            stdout.flush().unwrap();
+            match stdin.read_line(&mut buffer) {
+                Ok(_) => {
+                    println!("{}", eval.eval(buffer.clone().into()));
+                }
+                Err(_) => break,
+            }
+            buffer.clear();
+        }
     }
 }

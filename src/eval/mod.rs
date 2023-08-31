@@ -16,19 +16,19 @@ use self::{
     result::{EvalResult, Value},
 };
 
-pub struct Eval<'a> {
-    env: EnvRef<'a>,
+pub struct Eval {
+    env: EnvRef,
 }
 
 use EvalResult::*;
 use Value::*;
 
-impl<'a> Eval<'a> {
-    pub fn new() -> Eval<'a> {
+impl Eval {
+    pub fn new() -> Eval {
         Eval { env: Env::new() }
     }
 
-    fn eval_infix(op: &Op, lhs: EvalResult<'a>, rhs: EvalResult<'a>) -> EvalResult<'a> {
+    fn eval_infix(op: &Op, lhs: EvalResult, rhs: EvalResult) -> EvalResult {
         match (lhs, rhs) {
             (Val(lhs), Val(rhs))
             | (Val(lhs), Return(rhs))
@@ -65,7 +65,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_prefix(op: &Op, rhs: Value) -> EvalResult<'a> {
+    fn eval_prefix(op: &Op, rhs: Value) -> EvalResult {
         match op {
             Op::Neg => match rhs {
                 Int(i) => Val(Int(-i)),
@@ -79,7 +79,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_block(env: EnvRef<'a>, block: Rc<BlockExpression<'a>>) -> EvalResult<'a> {
+    fn eval_block(env: EnvRef, block: Rc<BlockExpression>) -> EvalResult {
         let mut rv = Val(Nil);
         let env = Env::from(env);
         for stmt in block.statements.iter().cloned() {
@@ -93,24 +93,19 @@ impl<'a> Eval<'a> {
         rv
     }
 
-    fn eval_assign(
-        env: EnvRef<'a>,
-        left: NodeRef<'a>,
-        right: NodeRef<'a>,
-        is_let: bool,
-    ) -> EvalResult<'a> {
+    fn eval_assign(env: EnvRef, left: NodeRef, right: NodeRef, is_let: bool) -> EvalResult {
         match left {
             Some(lhs) => match &lhs.kind {
                 NodeKind::Ident(name) => {
                     if is_let {
-                        env.borrow_mut().bind_local(name, Nil);
+                        env.borrow_mut().bind_local(name.clone(), Nil);
                     } else {
-                        env.borrow_mut().bind(name, Nil);
+                        env.borrow_mut().bind(name.clone(), Nil);
                     }
                     match Self::eval_ast(env.clone(), right.to_owned()) {
                         Val(val) | Return(val) => {
-                            if env.borrow_mut().bind(name, val) {
-                                return Val(Nil);
+                            if env.borrow_mut().bind(name.clone(), val) {
+                                Val(Nil)
                             } else {
                                 todo!()
                             }
@@ -124,7 +119,7 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_ast(env: EnvRef<'a>, node_ref: NodeRef<'a>) -> EvalResult<'a> {
+    fn eval_ast(env: EnvRef, node_ref: NodeRef) -> EvalResult {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
                 NodeKind::Ident(name) => match env.borrow().get(name) {
@@ -177,7 +172,7 @@ impl<'a> Eval<'a> {
                 }
                 NodeKind::Block(block) => Self::eval_block(env, Rc::new(block)),
                 NodeKind::Fn(func) => Val(Fn(func, node.right.clone())),
-                NodeKind::Call(call) => match env.borrow().get(call.ident) {
+                NodeKind::Call(call) => match env.borrow().get(call.ident.clone()) {
                     Some(Fn(func, ast)) => {
                         let new_env = Env::from(env.to_owned());
                         if func.args.len() != call.args.len() {
@@ -190,7 +185,7 @@ impl<'a> Eval<'a> {
                         for (name, arg) in func.args.iter().zip(call.args.iter()) {
                             match Self::eval_ast(env.to_owned(), arg.to_owned()) {
                                 Val(val) | Return(val) => {
-                                    new_env.borrow_mut().bind_local(name, val);
+                                    new_env.borrow_mut().bind_local(name.clone(), val);
                                 }
                                 Err(_) => todo!(),
                             }
@@ -204,12 +199,12 @@ impl<'a> Eval<'a> {
         }
     }
 
-    fn eval_statement(env: EnvRef<'a>, stmt: &'a str) -> EvalResult<'a> {
-        let mut parser = Parser::new(stmt);
+    fn eval_statement(env: EnvRef, stmt: Rc<str>) -> EvalResult {
+        let mut parser = Parser::new(&stmt);
         Self::eval_ast(env, parser.parse_statement())
     }
 
-    pub fn eval(&self, stmt: &'a str) -> EvalResult<'a> {
+    pub fn eval(&self, stmt: Rc<str>) -> EvalResult {
         Self::eval_statement(self.env.clone(), stmt)
     }
 }
@@ -221,7 +216,7 @@ mod tests {
     macro_rules! assert_eval_stmt {
         ($input:expr, $expected:expr) => {
             let eval = Eval::new();
-            assert_eq!(eval.eval($input), $expected);
+            assert_eq!(eval.eval($input.into()), $expected);
         };
     }
 
@@ -313,17 +308,17 @@ mod tests {
     fn fn_call() {
         // TODO refactor after fixing parser bug
         let eval = Eval::new();
-        eval.eval("let f = fn(x){x * x}");
-        assert_eq!(eval.eval("f(2)"), Val(Int(4)));
+        eval.eval("let f = fn(x){x * x}".into());
+        assert_eq!(eval.eval("f(2)".into()), Val(Int(4)));
     }
 
     #[test]
     fn scope() {
         // TODO refactor after fixing parser bug
         let eval = Eval::new();
-        eval.eval("let x = 1");
-        eval.eval("let f = fn(){x = 2}");
-        eval.eval("f()");
-        assert_eq!(eval.eval("x"), Val(Int(2)));
+        eval.eval("let x = 1".into());
+        eval.eval("let f = fn(){x = 2}".into());
+        eval.eval("f()".into());
+        assert_eq!(eval.eval("x".into()), Val(Int(2)));
     }
 }

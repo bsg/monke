@@ -3,14 +3,14 @@ use crate::ast::{FnExpression, NodeRef};
 use super::error::Error;
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Value<'a> {
+pub enum Value {
     Nil,
     Int(i64),
     Bool(bool),
-    Fn(FnExpression<'a>, NodeRef<'a>),
+    Fn(FnExpression, NodeRef),
 }
 
-impl Value<'_> {
+impl Value {
     pub fn type_str(&self) -> &str {
         match self {
             Value::Nil => "Nil",
@@ -21,7 +21,7 @@ impl Value<'_> {
     }
 }
 
-impl std::fmt::Display for Value<'_> {
+impl std::fmt::Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::Nil => f.write_str("nil"),
@@ -33,13 +33,13 @@ impl std::fmt::Display for Value<'_> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum EvalResult<'a> {
-    Val(Value<'a>),
-    Return(Value<'a>),
+pub enum EvalResult {
+    Val(Value),
+    Return(Value),
     Err(Error),
 }
 
-impl std::fmt::Display for EvalResult<'_> {
+impl std::fmt::Display for EvalResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Val(val) | Self::Return(val) => f.write_fmt(format_args!("{}", val)),

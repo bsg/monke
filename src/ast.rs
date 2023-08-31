@@ -46,61 +46,61 @@ impl Op {
         }
     }
 }
-pub type NodeRef<'a> = Option<Rc<Node<'a>>>;
+pub type NodeRef = Option<Rc<Node>>;
 
 #[derive(Clone, PartialEq)]
-pub struct BlockExpression<'a> {
+pub struct BlockExpression {
     // TODO replace with array?
-    pub statements: Vec<NodeRef<'a>>,
+    pub statements: Vec<NodeRef>,
 }
 
 #[derive(Clone, PartialEq)]
-pub struct IfExpression<'a> {
-    pub condition: NodeRef<'a>,
+pub struct IfExpression {
+    pub condition: NodeRef,
 }
 
 #[derive(Clone)]
-pub struct FnExpression<'a> {
+pub struct FnExpression {
     // TODO replace with array?
-    pub args: Vec<&'a str>,
+    pub args: Vec<Rc<str>>,
 }
 
-impl core::cmp::PartialEq for FnExpression<'_> {
+impl core::cmp::PartialEq for FnExpression {
     fn eq(&self, _other: &Self) -> bool {
         false // TODO what do
     }
 }
 
 #[derive(Clone, PartialEq)]
-pub struct CallExpression<'a> {
-    pub ident: &'a str,
+pub struct CallExpression {
+    pub ident: Rc<str>,
     // TODO replace with array?
-    pub args: Vec<NodeRef<'a>>,
+    pub args: Vec<NodeRef>,
 }
 
 #[derive(Clone, PartialEq)]
-pub enum NodeKind<'a> {
-    Ident(&'a str),
+pub enum NodeKind {
+    Ident(Rc<str>),
     Int(i64),
     Bool(bool),
     InfixOp(Op),
     PrefixOp(Op),
     Let,
     Return,
-    If(IfExpression<'a>),
-    Block(BlockExpression<'a>),
-    Fn(FnExpression<'a>),
-    Call(CallExpression<'a>),
+    If(IfExpression),
+    Block(BlockExpression),
+    Fn(FnExpression),
+    Call(CallExpression),
 }
 
 #[derive(Clone, PartialEq)]
-pub struct Node<'a> {
-    pub kind: NodeKind<'a>,
-    pub left: NodeRef<'a>,
-    pub right: NodeRef<'a>,
+pub struct Node {
+    pub kind: NodeKind,
+    pub left: NodeRef,
+    pub right: NodeRef,
 }
 
-impl fmt::Debug for NodeKind<'_> {
+impl fmt::Debug for NodeKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Ident(arg0) => f.debug_tuple("Ident").field(arg0).finish(),
@@ -118,13 +118,13 @@ impl fmt::Debug for NodeKind<'_> {
     }
 }
 
-impl fmt::Display for FnExpression<'_> {
+impl fmt::Display for FnExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.args.join(", ").as_str())
     }
 }
 
-impl fmt::Display for Node<'_> {
+impl fmt::Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_with_indent(node: &Node, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
             (0..indent).for_each(|_| _ = f.write_str("-"));
@@ -172,7 +172,7 @@ impl fmt::Display for Node<'_> {
 
                 NodeKind::Call(c) => {
                     if let Some(rhs) = node.right.as_ref() {
-                        if let NodeKind::Ident(ident) = rhs.kind {
+                        if let NodeKind::Ident(ident) = &rhs.kind {
                             f.write_fmt(format_args!("{}\n", ident))?;
                             for arg in c.args.iter() {
                                 arg.as_ref()
@@ -200,7 +200,7 @@ impl fmt::Display for Node<'_> {
     }
 }
 
-impl fmt::Debug for Node<'_> {
+impl fmt::Debug for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fn fmt_with_indent(node: &Node, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
             (0..indent).for_each(|_| _ = f.write_str("-"));
@@ -221,7 +221,7 @@ impl fmt::Debug for Node<'_> {
     }
 }
 
-impl fmt::Debug for BlockExpression<'_> {
+impl fmt::Debug for BlockExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for stmt in &self.statements {
             f.write_fmt(format_args!("{:?}", stmt))?;
@@ -230,19 +230,19 @@ impl fmt::Debug for BlockExpression<'_> {
     }
 }
 
-impl fmt::Debug for IfExpression<'_> {
+impl fmt::Debug for IfExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:?})", self.condition))
     }
 }
 
-impl fmt::Debug for FnExpression<'_> {
+impl fmt::Debug for FnExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:?})", self.args))
     }
 }
 
-impl fmt::Debug for CallExpression<'_> {
+impl fmt::Debug for CallExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:?})", self.args))
     }

@@ -1,11 +1,11 @@
-use std::str;
+use std::{rc::Rc, str};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Token<'a> {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum Token {
     Illegal,
     Eof,
-    Ident(&'a str),
-    Int(&'a str),
+    Ident(Rc<str>),
+    Int(Rc<str>),
 
     // Operators
     Assign,
@@ -37,7 +37,7 @@ pub enum Token<'a> {
     Return,
 }
 
-impl std::fmt::Display for Token<'_> {
+impl std::fmt::Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Ident(s) => f.write_fmt(format_args!("Ident({})", s)),
@@ -47,19 +47,19 @@ impl std::fmt::Display for Token<'_> {
     }
 }
 
-pub struct Tokens<'a> {
-    input: &'a [u8],
+pub struct Tokens {
+    input: Rc<str>,
     position: usize,
     read_position: usize,
     ch: Option<u8>,
 }
 
-impl<'a> Tokens<'a> {
+impl Tokens {
     fn read_char(&mut self) {
         if self.read_position >= self.input.len() {
             self.ch = None;
         } else {
-            self.ch = Some(self.input[self.read_position]);
+            self.ch = Some(self.input.as_bytes()[self.read_position]);
         }
         self.position = self.read_position;
         self.read_position += 1;
@@ -69,7 +69,7 @@ impl<'a> Tokens<'a> {
         if self.read_position >= self.input.len() {
             None
         } else {
-            Some(self.input[self.read_position])
+            Some(self.input.as_bytes()[self.read_position])
         }
     }
 
@@ -79,7 +79,7 @@ impl<'a> Tokens<'a> {
         }
     }
 
-    fn read_identifier(&mut self) -> &'a [u8] {
+    fn read_identifier(&mut self) -> Rc<str> {
         let pos_start = self.position;
         while let Some(c) = self.ch {
             match c {
@@ -89,20 +89,20 @@ impl<'a> Tokens<'a> {
                 _ => break,
             }
         }
-        &self.input[pos_start..self.position]
+        Rc::from(self.input[pos_start..self.position].to_string())
     }
 
-    fn read_number(&mut self) -> &'a [u8] {
+    fn read_number(&mut self) -> Rc<str> {
         let pos_start = self.position;
 
         while let Some(b'0'..=b'9') = self.ch {
             self.read_char();
         }
 
-        &self.input[pos_start..self.position]
+        Rc::from(self.input[pos_start..self.position].to_string())
     }
 
-    fn next_token(&mut self) -> Token<'a> {
+    fn next_token(&mut self) -> Token {
         use Token::*;
 
         self.skip_whitespace();
@@ -136,26 +136,18 @@ impl<'a> Tokens<'a> {
             Some(c) => match c {
                 (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
                     let ident = self.read_identifier();
-                    return match ident {
-                        b"fn" => Fn,
-                        b"let" => Let,
-                        b"true" => True,
-                        b"false" => False,
-                        b"if" => If,
-                        b"else" => Else,
-                        b"return" => Return,
-                        _ => match str::from_utf8(ident) {
-                            Ok(s) => Ident(s),
-                            Err(_) => todo!(),
-                        },
+                    return match ident.as_ref() {
+                        "fn" => Fn,
+                        "let" => Let,
+                        "true" => True,
+                        "false" => False,
+                        "if" => If,
+                        "else" => Else,
+                        "return" => Return,
+                        _ => Ident(ident),
                     };
                 }
-                (b'0'..=b'9') => {
-                    return match str::from_utf8(self.read_number()) {
-                        Ok(s) => Int(s),
-                        Err(_) => todo!(),
-                    }
-                }
+                (b'0'..=b'9') => return Int(self.read_number()),
                 _ => Illegal,
             },
             None => Eof,
@@ -165,8 +157,8 @@ impl<'a> Tokens<'a> {
     }
 }
 
-impl<'a> Iterator for Tokens<'a> {
-    type Item = Token<'a>;
+impl Iterator for Tokens {
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         let tok = self.next_token();
@@ -177,18 +169,20 @@ impl<'a> Iterator for Tokens<'a> {
     }
 }
 
-pub struct Lexer<'a> {
-    input: &'a str,
+pub struct Lexer {
+    input: Rc<str>,
 }
 
-impl<'a> Lexer<'a> {
+impl Lexer {
     pub fn new(input: &str) -> Lexer {
-        Lexer { input }
+        Lexer {
+            input: input.into(),
+        }
     }
 
-    pub fn tokens(&self) -> Tokens<'a> {
+    pub fn tokens(&self) -> Tokens {
         let mut tokens = Tokens {
-            input: self.input.as_bytes(),
+            input: self.input.clone(),
             position: 0,
             read_position: 0,
             ch: None,
@@ -218,7 +212,7 @@ mod tests {
     #[test]
     fn read_identifier() {
         let mut tokens = Lexer::new("let ").tokens();
-        assert_eq!(tokens.read_identifier(), b"let");
+        assert_eq!(tokens.read_identifier(), "let".into());
     }
 
     #[test]
@@ -240,12 +234,12 @@ mod tests {
 
         #[rustfmt::skip]
         let expected = vec!{
-            Let, Ident("five"), Assign, Int("5"), Semicolon,
-            Let, Ident("ten"), Assign, Int("10"), Semicolon,
-            Let, Ident("add"), Assign, Fn, LParen, Ident("x"), Comma, Ident("y"), RParen, LBrace,
-            Ident("x"), Plus, Ident("y"), Semicolon,
+            Let, Ident("five".into()), Assign, Int("5".into()), Semicolon,
+            Let, Ident("ten".into()), Assign, Int("10".into()), Semicolon,
+            Let, Ident("add".into()), Assign, Fn, LParen, Ident("x".into()), Comma, Ident("y".into()), RParen, LBrace,
+            Ident("x".into()), Plus, Ident("y".into()), Semicolon,
             RBrace, Semicolon,
-            Let, Ident("result"), Assign, Ident("add"), LParen, Ident("five"), Comma, Ident("ten"), RParen, Semicolon
+            Let, Ident("result".into()), Assign, Ident("add".into()), LParen, Ident("five".into()), Comma, Ident("ten".into()), RParen, Semicolon
         };
 
         let lexer = Lexer::new(source);
