@@ -3,8 +3,7 @@ use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 use super::result::Value;
 
 pub struct Env<'a> {
-    // TODO &str instead of String
-    store: BTreeMap<String, Value<'a>>,
+    store: BTreeMap<&'a str, Value<'a>>,
     outer: Option<Rc<RefCell<Env<'a>>>>,
 }
 
@@ -22,11 +21,11 @@ impl<'a> Env<'a> {
         env
     }
 
-    pub fn bind_local(&mut self, name: String, val: Value<'a>) {
+    pub fn bind_local(&mut self, name: &'a str, val: Value<'a>) {
         self.store.insert(name, val);
     }
 
-    pub fn bind(&mut self, name: String, val: Value<'a>) -> bool {
+    pub fn bind(&mut self, name: &'a str, val: Value<'a>) -> bool {
         if self.store.contains_key(&name) {
             self.store.insert(name, val);
             return true;
@@ -38,7 +37,7 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn get(&self, name: &String) -> Option<Value<'a>> {
+    pub fn get(&self, name: &'a str) -> Option<Value<'a>> {
         if self.store.contains_key(name) {
             self.store.get(name).cloned()
         } else {
@@ -59,20 +58,20 @@ mod tests {
     #[test]
     fn env() {
         let env = Env::new();
-        env.borrow_mut().bind_local("x".to_string(), Int(5));
+        env.borrow_mut().bind_local("x", Int(5));
 
-        assert_eq!(env.borrow().get(&"x".to_string()), Some(Int(5)));
+        assert_eq!(env.borrow().get(&"x"), Some(Int(5)));
     }
 
     #[test]
     fn nested_envs() {
         let outer = Env::new();
-        outer.borrow_mut().bind_local("x".to_string(), Int(5));
-        outer.borrow_mut().bind_local("y".to_string(), Int(1));
+        outer.borrow_mut().bind_local("x", Int(5));
+        outer.borrow_mut().bind_local("y", Int(1));
 
         let inner = Env::from(outer);
-        assert!(inner.borrow_mut().bind("y".to_string(), Bool(true)));
-        assert_eq!(inner.borrow().get(&"x".to_string()), Some(Int(5)));
-        assert_eq!(inner.borrow().get(&"y".to_string()), Some(Bool(true)));
+        assert!(inner.borrow_mut().bind("y", Bool(true)));
+        assert_eq!(inner.borrow().get(&"x"), Some(Int(5)));
+        assert_eq!(inner.borrow().get(&"y"), Some(Bool(true)));
     }
 }

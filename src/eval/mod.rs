@@ -103,13 +103,13 @@ impl<'a> Eval<'a> {
             Some(lhs) => match &lhs.kind {
                 NodeKind::Ident(name) => {
                     if is_let {
-                        env.borrow_mut().bind_local(name.to_string(), Nil);
+                        env.borrow_mut().bind_local(name, Nil);
                     } else {
-                        env.borrow_mut().bind(name.to_string(), Nil);
+                        env.borrow_mut().bind(name, Nil);
                     }
                     match Self::eval_ast(env.clone(), right.to_owned()) {
                         Val(val) | Return(val) => {
-                            if env.borrow_mut().bind(name.to_string(), val) {
+                            if env.borrow_mut().bind(name, val) {
                                 return Val(Nil);
                             } else {
                                 todo!()
@@ -127,7 +127,7 @@ impl<'a> Eval<'a> {
     fn eval_ast(env: Rc<RefCell<Env<'a>>>, node_ref: NodeRef<'a>) -> EvalResult<'a> {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
-                NodeKind::Ident(name) => match env.borrow().get(&name.to_string()) {
+                NodeKind::Ident(name) => match env.borrow().get(&name) {
                     Some(val) => Val(val),
                     None => todo!(),
                 },
@@ -177,7 +177,7 @@ impl<'a> Eval<'a> {
                 }
                 NodeKind::Block(block) => Self::eval_block(env, Rc::new(block)),
                 NodeKind::Fn(func) => Val(Fn(func, node.right.clone())),
-                NodeKind::Call(call) => match env.borrow().get(&call.ident.to_string()) {
+                NodeKind::Call(call) => match env.borrow().get(&call.ident) {
                     Some(Fn(func, ast)) => {
                         let new_env = Env::from(env.to_owned());
                         if func.args.len() != call.args.len() {
@@ -190,7 +190,7 @@ impl<'a> Eval<'a> {
                         for (name, arg) in func.args.iter().zip(call.args.iter()) {
                             match Self::eval_ast(env.to_owned(), arg.to_owned()) {
                                 Val(val) | Return(val) => {
-                                    new_env.borrow_mut().bind_local(name.to_string(), val);
+                                    new_env.borrow_mut().bind_local(name, val);
                                 }
                                 Err(_) => todo!(),
                             }
