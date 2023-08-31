@@ -35,7 +35,7 @@ impl<'a> Eval<'a> {
             | (Return(lhs), Val(rhs))
             | (Return(lhs), Return(rhs)) => {
                 match op {
-                    Op::Assign => todo!(),
+                    Op::Assign => unreachable!(),
                     Op::Eq => Val(Bool(lhs == rhs)),
                     Op::NotEq => Val(Bool(lhs != rhs)),
                     Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt => {
@@ -93,6 +93,37 @@ impl<'a> Eval<'a> {
         rv
     }
 
+    fn eval_assign(
+        env: Rc<RefCell<Env<'a>>>,
+        left: NodeRef<'a>,
+        right: NodeRef<'a>,
+        is_let: bool,
+    ) -> EvalResult<'a> {
+        match left {
+            Some(lhs) => match &lhs.kind {
+                NodeKind::Ident(name) => {
+                    if is_let {
+                        env.borrow_mut().bind_local(name.to_string(), Nil);
+                    } else {
+                        env.borrow_mut().bind(name.to_string(), Nil);
+                    }
+                    match Self::eval_ast(env.clone(), right.to_owned()) {
+                        Val(val) | Return(val) => {
+                            if env.borrow_mut().bind(name.to_string(), val) {
+                                return Val(Nil);
+                            } else {
+                                todo!()
+                            }
+                        }
+                        Err(_) => todo!(),
+                    }
+                }
+                _ => todo!(),
+            },
+            None => todo!(),
+        }
+    }
+
     fn eval_ast(env: Rc<RefCell<Env<'a>>>, node_ref: NodeRef<'a>) -> EvalResult<'a> {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
@@ -106,35 +137,24 @@ impl<'a> Eval<'a> {
                     err @ Err(_) => err,
                     Val(val) | Return(val) => Self::eval_prefix(&op, val),
                 },
-                NodeKind::InfixOp(op) => {
-                    match (
-                        Self::eval_ast(env.clone(), node.left.to_owned()),
-                        Self::eval_ast(env.clone(), node.right.to_owned()),
-                    ) {
-                        p @ (Err(_), _) => p.0,
-                        p @ (_, Err(_)) => p.1,
-                        (lhs, rhs) => Self::eval_infix(&op, lhs, rhs),
+                NodeKind::InfixOp(op) => match op {
+                    Op::Assign => {
+                        Self::eval_assign(env, node.left.to_owned(), node.right.to_owned(), false)
                     }
-                }
-                NodeKind::Let => match &node.left {
-                    Some(lhs) => match &lhs.kind {
-                        NodeKind::Ident(name) => {
-                            env.borrow_mut().bind_local(name.to_string(), Nil);
-                            match Self::eval_ast(env.clone(), node.right.to_owned()) {
-                                Val(val) | Return(val) => {
-                                    if env.borrow_mut().bind(name.to_string(), val) {
-                                        return Val(Nil);
-                                    } else {
-                                        todo!()
-                                    }
-                                }
-                                Err(_) => todo!(),
-                            }
+                    _ => {
+                        match (
+                            Self::eval_ast(env.clone(), node.left.to_owned()),
+                            Self::eval_ast(env.clone(), node.right.to_owned()),
+                        ) {
+                            p @ (Err(_), _) => p.0,
+                            p @ (_, Err(_)) => p.1,
+                            (lhs, rhs) => Self::eval_infix(&op, lhs, rhs),
                         }
-                        _ => todo!(),
-                    },
-                    None => todo!(),
+                    }
                 },
+                NodeKind::Let => {
+                    Self::eval_assign(env, node.left.to_owned(), node.right.to_owned(), true)
+                }
                 NodeKind::Return => match Self::eval_ast(env, node.right.to_owned()) {
                     Val(val) | Return(val) => Return(val),
                     err @ Err(_) => err,
@@ -189,7 +209,7 @@ impl<'a> Eval<'a> {
         Self::eval_ast(env, parser.parse_statement())
     }
 
-    pub fn eval(&'a self, stmt: &'a str) -> EvalResult {
+    pub fn eval(&self, stmt: &'a str) -> EvalResult<'a> {
         Self::eval_statement(self.env.clone(), stmt)
     }
 }
@@ -291,8 +311,19 @@ mod tests {
 
     #[test]
     fn fn_call() {
+        // TODO refactor after fixing parser bug
         let eval = Eval::new();
         eval.eval("let f = fn(x){x * x}");
         assert_eq!(eval.eval("f(2)"), Val(Int(4)));
+    }
+
+    #[test]
+    fn scope() {
+        // TODO refactor after fixing parser bug
+        let eval = Eval::new();
+        eval.eval("let x = 1");
+        eval.eval("let f = fn(){x = 2}");
+        eval.eval("f()");
+        assert_eq!(eval.eval("x"), Val(Int(2)));
     }
 }
