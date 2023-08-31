@@ -62,7 +62,7 @@ impl<'a> Tokens<'a> {
             self.ch = Some(self.input[self.read_position]);
         }
         self.position = self.read_position;
-        self.read_position = self.read_position + 1;
+        self.read_position += 1;
     }
 
     fn peek_char(&self) -> Option<u8> {
@@ -81,31 +81,24 @@ impl<'a> Tokens<'a> {
 
     fn read_identifier(&mut self) -> &'a [u8] {
         let pos_start = self.position;
-        loop {
-            match self.ch {
-                Some(c) => match c {
-                    (b'0'..=b'9') | (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => (),
-                    _ => break,
-                },
-                None => break,
+        while let Some(c) = self.ch {
+            match c {
+                (b'0'..=b'9') | (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
+                    self.read_char();
+                }
+                _ => break,
             }
-            self.read_char();
         }
         &self.input[pos_start..self.position]
     }
 
     fn read_number(&mut self) -> &'a [u8] {
         let pos_start = self.position;
-        loop {
-            match self.ch {
-                Some(c) => match c {
-                    (b'0'..=b'9') => (),
-                    _ => break,
-                },
-                None => break,
-            }
+
+        while let Some(b'0'..=b'9') = self.ch {
             self.read_char();
         }
+
         &self.input[pos_start..self.position]
     }
 

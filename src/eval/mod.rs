@@ -50,11 +50,11 @@ impl<'a> Eval<'a> {
                                 Op::Gt => Val(Bool(a > b)),
                                 _ => unreachable!(),
                             },
-                            p @ _ => err!(
+                            other => err!(
                                 "unknown operator {} {} {}",
-                                p.0.type_str(),
+                                other.0.type_str(),
                                 op,
-                                p.1.type_str()
+                                other.1.type_str()
                             ),
                         }
                     }
@@ -82,7 +82,7 @@ impl<'a> Eval<'a> {
     fn eval_block(env: EnvRef<'a>, block: Rc<BlockExpression<'a>>) -> EvalResult<'a> {
         let mut rv = Val(Nil);
         let env = Env::from(env);
-        for stmt in block.statements.to_owned() {
+        for stmt in block.statements.iter().cloned() {
             match Self::eval_ast(env.clone(), stmt) {
                 val @ Val(_) | val @ Return(_) => {
                     rv = val;
@@ -127,7 +127,7 @@ impl<'a> Eval<'a> {
     fn eval_ast(env: EnvRef<'a>, node_ref: NodeRef<'a>) -> EvalResult<'a> {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
-                NodeKind::Ident(name) => match env.borrow().get(&name) {
+                NodeKind::Ident(name) => match env.borrow().get(name) {
                     Some(val) => Val(val),
                     None => todo!(),
                 },
@@ -177,7 +177,7 @@ impl<'a> Eval<'a> {
                 }
                 NodeKind::Block(block) => Self::eval_block(env, Rc::new(block)),
                 NodeKind::Fn(func) => Val(Fn(func, node.right.clone())),
-                NodeKind::Call(call) => match env.borrow().get(&call.ident) {
+                NodeKind::Call(call) => match env.borrow().get(call.ident) {
                     Some(Fn(func, ast)) => {
                         let new_env = Env::from(env.to_owned());
                         if func.args.len() != call.args.len() {

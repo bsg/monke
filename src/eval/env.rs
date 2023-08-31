@@ -30,7 +30,7 @@ impl<'a> Env<'a> {
     pub fn bind(&self, name: &'a str, val: Value<'a>) -> bool {
         if self.store.borrow().contains_key(&name) {
             self.store.borrow_mut().insert(name, val);
-            return true;
+            true
         } else {
             match &self.outer {
                 Some(outer) => outer.borrow().bind(name, val),

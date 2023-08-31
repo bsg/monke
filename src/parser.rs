@@ -21,7 +21,7 @@ macro_rules! node {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new<'b>(input: &'b str) -> Parser {
+    pub fn new(input: &str) -> Parser {
         Parser {
             tokens: Lexer::new(input.clone()).tokens().peekable(),
             curr_token: None,
@@ -31,10 +31,7 @@ impl<'a> Parser<'a> {
 
     fn next_token(&mut self) {
         self.curr_token = self.tokens.next();
-        self.peek_token = match self.tokens.peek() {
-            Some(token) => Some(*token),
-            None => None,
-        };
+        self.peek_token = self.tokens.peek().copied();
     }
 
     fn parse_block(&mut self) -> NodeRef<'a> {
@@ -42,12 +39,10 @@ impl<'a> Parser<'a> {
 
         match self.curr_token {
             Some(Token::LBrace) => {
-                loop {
-                    match self.parse_statement() {
-                        Some(stmt) => statements.push(Some(stmt)),
-                        None => break,
-                    }
+                while let Some(stmt) = self.parse_statement() {
+                    statements.push(Some(stmt));
                 }
+
                 assert_eq!(self.curr_token, Some(Token::RBrace));
                 self.next_token(); // Consume RBrace
                 node!(NodeKind::Block(BlockExpression { statements }), None, None)
@@ -66,11 +61,8 @@ impl<'a> Parser<'a> {
                 let lhs = self.parse_block();
 
                 // eat 'else' if there is one
-                loop {
-                    match self.curr_token {
-                        Some(Token::Else) => self.next_token(),
-                        _ => break,
-                    }
+                while let Some(Token::Else) = self.curr_token {
+                    self.next_token();
                 }
 
                 assert_ne!(self.curr_token, Some(Token::RBrace));
@@ -131,16 +123,11 @@ impl<'a> Parser<'a> {
             None => todo!(),
         }
 
-        loop {
-            match self.parse_expression(0) {
-                Some(node) => {
-                    args.push(node.into());
-                    match self.peek_token {
-                        Some(Token::Comma) => self.next_token(),
-                        _ => break,
-                    }
-                }
-                None => break,
+        while let Some(node) = self.parse_expression(0) {
+            args.push(node.into());
+            match self.peek_token {
+                Some(Token::Comma) => self.next_token(),
+                _ => break,
             }
         }
 
@@ -176,12 +163,10 @@ impl<'a> Parser<'a> {
             None => None,
         };
 
-        loop {
-            match self.peek_token {
-                Some(Token::Semicolon) => self.next_token(),
-                _ => break,
-            }
+        while let Some(Token::Semicolon) = self.peek_token {
+            self.next_token();
         }
+
         node
     }
 

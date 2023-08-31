@@ -66,7 +66,7 @@ pub struct FnExpression<'a> {
 }
 
 impl core::cmp::PartialEq for FnExpression<'_> {
-    fn eq(&self, other: &Self) -> bool {
+    fn eq(&self, _other: &Self) -> bool {
         false // TODO what do
     }
 }
@@ -137,70 +137,62 @@ impl fmt::Display for Node<'_> {
                     NodeKind::Bool(b) => format!("Bool({})\n", b),
                     NodeKind::InfixOp(op) => format!("{:?}\n", op),
                     NodeKind::PrefixOp(op) => format!("{:?}\n", op),
-                    NodeKind::Let => format!("Let\n"),
-                    NodeKind::Return => format!("Return\n"),
-                    NodeKind::If(_) => format!("If\n"),
+                    NodeKind::Let => "Let\n".to_string(),
+                    NodeKind::Return => "Return\n".to_string(),
+                    NodeKind::If(_) => "If\n".to_string(),
                     NodeKind::Fn(args) => format!("Fn({})\n", args),
-                    NodeKind::Block(_) => format!("Block\n"),
-                    NodeKind::Call(_) => format!("Call "),
+                    NodeKind::Block(_) => "Block\n".to_string(),
+                    NodeKind::Call(_) => "Call ".to_string(),
                 }
             ))?;
             match &node.kind {
                 NodeKind::Block(block) => {
                     for stmt in &block.statements {
                         stmt.as_ref()
-                            .map(|node| fmt_with_indent(&node, f, indent + 1));
+                            .map(|node| fmt_with_indent(node, f, indent + 1));
                     }
                 }
                 NodeKind::If(c) => {
                     c.condition
                         .as_ref()
-                        .map(|node| fmt_with_indent(&node, f, indent + 1));
-                    match node.left.as_ref().clone() {
-                        Some(node) => {
-                            f.write_str("Then\n")?;
-                            fmt_with_indent(&node, f, indent + 1)?;
-                        }
-                        None => (),
-                    };
-                    match node.right.as_ref().clone() {
-                        Some(node) => {
-                            f.write_str("Else\n")?;
-                            fmt_with_indent(&node, f, indent + 1)?;
-                        }
-                        None => (),
-                    };
+                        .map(|node| fmt_with_indent(node, f, indent + 1));
+
+                    if let Some(node) = node.left.as_ref() {
+                        f.write_str("Then\n")?;
+                        fmt_with_indent(node, f, indent + 1)?;
+                    }
+
+                    if let Some(node) = node.right.as_ref() {
+                        f.write_str("Else\n")?;
+                        fmt_with_indent(node, f, indent + 1)?;
+                    }
+
                     return Ok(());
                 }
 
-                NodeKind::Call(c) => match node.right.as_ref().clone() {
-                    Some(rhs) => match rhs.kind {
-                        NodeKind::Ident(ident) => {
+                NodeKind::Call(c) => {
+                    if let Some(rhs) = node.right.as_ref() {
+                        if let NodeKind::Ident(ident) = rhs.kind {
                             f.write_fmt(format_args!("{}\n", ident))?;
                             for arg in c.args.iter() {
                                 arg.as_ref()
-                                    .map(|node| fmt_with_indent(&node, f, indent + 1));
+                                    .map(|node| fmt_with_indent(node, f, indent + 1));
                             }
                             return Ok(());
                         }
-                        _ => (),
-                    },
-                    _ => (),
-                },
+                    }
+                }
                 _ => (),
             }
-            match node.left.as_ref().clone() {
-                Some(node) => {
-                    fmt_with_indent(&node, f, indent + 1)?;
-                }
-                None => (),
-            };
-            match node.right.as_ref().clone() {
-                Some(node) => {
-                    fmt_with_indent(&node, f, indent + 1)?;
-                }
-                None => (),
-            };
+
+            if let Some(lhs) = node.left.as_ref() {
+                fmt_with_indent(lhs, f, indent + 1)?;
+            }
+
+            if let Some(rhs) = node.right.as_ref() {
+                fmt_with_indent(rhs, f, indent + 1)?;
+            }
+
             Ok(())
         }
         fmt_with_indent(self, f, 0)?;
@@ -213,18 +205,15 @@ impl fmt::Debug for Node<'_> {
         fn fmt_with_indent(node: &Node, f: &mut fmt::Formatter, indent: usize) -> fmt::Result {
             (0..indent).for_each(|_| _ = f.write_str("-"));
             f.write_fmt(format_args!("{:?}\n", node.kind))?;
-            match node.left.as_ref().clone() {
-                Some(node) => {
-                    fmt_with_indent(&node, f, indent + 1)?;
-                }
-                None => (),
-            };
-            match node.right.as_ref().clone() {
-                Some(node) => {
-                    fmt_with_indent(&node, f, indent + 1)?;
-                }
-                None => (),
-            };
+
+            if let Some(lhs) = node.left.as_ref() {
+                fmt_with_indent(lhs, f, indent + 1)?;
+            }
+
+            if let Some(rhs) = node.right.as_ref() {
+                fmt_with_indent(rhs, f, indent + 1)?
+            }
+
             Ok(())
         }
         fmt_with_indent(self, f, 0)?;

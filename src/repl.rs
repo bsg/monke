@@ -11,6 +11,7 @@ impl Repl {
         let mut stdout = io::stdout();
 
         let eval = Eval::new();
+        eval.eval("1");
         // loop {
         //     print!("> ");
         //     stdout.flush().unwrap();
