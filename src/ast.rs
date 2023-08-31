@@ -50,8 +50,7 @@ pub type NodeRef = Option<Rc<Node>>;
 
 #[derive(Clone, PartialEq)]
 pub struct BlockExpression {
-    // TODO replace with array?
-    pub statements: Vec<NodeRef>,
+    pub statements: Rc<[NodeRef]>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -61,8 +60,7 @@ pub struct IfExpression {
 
 #[derive(Clone)]
 pub struct FnExpression {
-    // TODO replace with array?
-    pub args: Vec<Rc<str>>,
+    pub args: Rc<[Rc<str>]>,
 }
 
 impl core::cmp::PartialEq for FnExpression {
@@ -74,8 +72,7 @@ impl core::cmp::PartialEq for FnExpression {
 #[derive(Clone, PartialEq)]
 pub struct CallExpression {
     pub ident: Rc<str>,
-    // TODO replace with array?
-    pub args: Vec<NodeRef>,
+    pub args: Rc<[NodeRef]>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -147,7 +144,7 @@ impl fmt::Display for Node {
             ))?;
             match &node.kind {
                 NodeKind::Block(block) => {
-                    for stmt in &block.statements {
+                    for stmt in block.statements.iter() {
                         stmt.as_ref()
                             .map(|node| fmt_with_indent(node, f, indent + 1));
                     }
@@ -223,7 +220,7 @@ impl fmt::Debug for Node {
 
 impl fmt::Debug for BlockExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for stmt in &self.statements {
+        for stmt in self.statements.iter() {
             f.write_fmt(format_args!("{:?}", stmt))?;
         }
         Ok(())

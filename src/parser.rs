@@ -45,7 +45,13 @@ impl Parser {
 
                 assert_eq!(self.curr_token, Some(Token::RBrace));
                 self.next_token(); // Consume RBrace
-                node!(NodeKind::Block(BlockExpression { statements }), None, None)
+                node!(
+                    NodeKind::Block(BlockExpression {
+                        statements: Rc::from(statements.as_slice())
+                    }),
+                    None,
+                    None
+                )
             }
             _ => None,
         }
@@ -104,7 +110,13 @@ impl Parser {
                 assert_eq!(self.curr_token, Some(Token::LBrace));
                 let body = self.parse_block();
 
-                node!(NodeKind::Fn(FnExpression { args }), None, body)
+                node!(
+                    NodeKind::Fn(FnExpression {
+                        args: Rc::from(args.as_slice())
+                    }),
+                    None,
+                    body
+                )
             }
             (Some(_), Some(_)) => todo!(),
             (_, _) => None,
@@ -133,7 +145,14 @@ impl Parser {
 
         assert_eq!(self.curr_token, Some(Token::RParen));
 
-        node!(NodeKind::Call(CallExpression { ident, args }), None, rhs)
+        node!(
+            NodeKind::Call(CallExpression {
+                ident,
+                args: Rc::from(args.as_slice())
+            }),
+            None,
+            rhs
+        )
     }
 
     pub fn parse_statement(&mut self) -> NodeRef {
