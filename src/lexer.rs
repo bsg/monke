@@ -190,7 +190,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &str) -> Lexer {
-        Lexer { input: input }
+        Lexer { input }
     }
 
     pub fn tokens(&self) -> Tokens<'a> {

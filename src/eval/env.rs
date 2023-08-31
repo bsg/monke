@@ -4,7 +4,7 @@ use super::result::Value;
 
 pub struct Env<'a> {
     // TODO &str instead of String
-    store: BTreeMap<String, Value>,
+    store: BTreeMap<String, Value<'a>>,
     outer: Option<Rc<RefCell<Env<'a>>>>,
 }
 
@@ -22,11 +22,11 @@ impl<'a> Env<'a> {
         env
     }
 
-    pub fn bind_local(&mut self, name: String, val: Value) {
+    pub fn bind_local(&mut self, name: String, val: Value<'a>) {
         self.store.insert(name, val);
     }
 
-    pub fn bind(&mut self, name: String, val: Value) -> bool {
+    pub fn bind(&mut self, name: String, val: Value<'a>) -> bool {
         if self.store.contains_key(&name) {
             self.store.insert(name, val);
             return true;
@@ -38,9 +38,9 @@ impl<'a> Env<'a> {
         }
     }
 
-    pub fn get(&self, name: &String) -> Option<Value> {
+    pub fn get(&self, name: &String) -> Option<Value<'a>> {
         if self.store.contains_key(name) {
-            self.store.get(name).copied()
+            self.store.get(name).cloned()
         } else {
             match &self.outer {
                 Some(outer) => outer.borrow().get(name),

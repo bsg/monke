@@ -21,9 +21,9 @@ macro_rules! node {
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(input: &'a str) -> Parser {
+    pub fn new<'b>(input: &'b str) -> Parser {
         Parser {
-            tokens: Lexer::new(input).tokens().peekable(),
+            tokens: Lexer::new(input.clone()).tokens().peekable(),
             curr_token: None,
             peek_token: None,
         }
@@ -576,10 +576,10 @@ mod tests {
         assert_parse!(
             "f(2, a+1)",
             "Call f\
-                -Int(2)\
-                -Add\
-                --Ident(a)\
-                --Int(1)"
+            -Int(2)\
+            -Add\
+            --Ident(a)\
+            --Int(1)"
         );
     }
 

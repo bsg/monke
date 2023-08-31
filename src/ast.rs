@@ -1,6 +1,6 @@
 use std::{fmt, rc::Rc};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
     Assign,
     Eq,
@@ -48,26 +48,37 @@ impl Op {
 }
 pub type NodeRef<'a> = Option<Rc<Node<'a>>>;
 
+#[derive(Clone, PartialEq)]
 pub struct BlockExpression<'a> {
     // TODO replace with array?
     pub statements: Vec<NodeRef<'a>>,
 }
 
+#[derive(Clone, PartialEq)]
 pub struct IfExpression<'a> {
     pub condition: NodeRef<'a>,
 }
 
+#[derive(Clone)]
 pub struct FnExpression<'a> {
     // TODO replace with array?
     pub args: Vec<&'a str>,
 }
 
+impl core::cmp::PartialEq for FnExpression<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        false // TODO what do
+    }
+}
+
+#[derive(Clone, PartialEq)]
 pub struct CallExpression<'a> {
     pub ident: &'a str,
     // TODO replace with array?
     pub args: Vec<NodeRef<'a>>,
 }
 
+#[derive(Clone, PartialEq)]
 pub enum NodeKind<'a> {
     Ident(&'a str),
     Int(i64),
@@ -82,6 +93,7 @@ pub enum NodeKind<'a> {
     Call(CallExpression<'a>),
 }
 
+#[derive(Clone, PartialEq)]
 pub struct Node<'a> {
     pub kind: NodeKind<'a>,
     pub left: NodeRef<'a>,
