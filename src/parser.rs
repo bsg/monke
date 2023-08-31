@@ -12,7 +12,7 @@ pub struct Parser {
 
 macro_rules! node {
     ($kind:expr, $left:expr, $right:expr) => {
-        Some(Rc::from(Node {
+        Some(Rc::new(Node {
             kind: $kind,
             left: $left,
             right: $right,
