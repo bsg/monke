@@ -24,7 +24,7 @@ macro_rules! node {
 impl Parser {
     pub fn new(input: &str) -> Parser {
         Parser {
-            tokens: Lexer::new(input.clone()).tokens().peekable(),
+            tokens: Lexer::new(input).tokens().peekable(),
             curr_token: None,
             peek_token: None,
         }
@@ -94,13 +94,13 @@ impl Parser {
     fn parse_fn(&mut self) -> NodeRef {
         let mut args: Vec<Rc<str>> = Vec::new();
 
-        match (self.curr_token.clone(), self.peek_token.clone()) {
+        match (&self.curr_token, &self.peek_token) {
             (Some(Fn), Some(LParen)) => {
                 self.next_token();
                 self.next_token();
                 loop {
-                    match self.curr_token.clone() {
-                        Some(Ident(name)) => args.push(name),
+                    match &self.curr_token {
+                        Some(Ident(name)) => args.push(name.clone()),
                         Some(Comma) => (),
                         _ => break,
                     }
