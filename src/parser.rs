@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::ast::*;
 use crate::lexer::{Lexer, Token, Tokens};
+use Token::*;
 
 pub struct Parser {
     tokens: Peekable<Tokens>,
@@ -38,12 +39,12 @@ impl Parser {
         let mut statements: Vec<NodeRef> = Vec::new();
 
         match self.curr_token {
-            Some(Token::LBrace) => {
+            Some(LBrace) => {
                 while let Some(stmt) = self.parse_statement().as_ref() {
                     statements.push(Some(stmt.clone()));
                 }
 
-                assert_eq!(self.curr_token, Some(Token::RBrace));
+                assert_eq!(self.curr_token, Some(RBrace));
                 self.next_token(); // Consume RBrace
                 node!(
                     NodeKind::Block(BlockExpression {
@@ -59,19 +60,19 @@ impl Parser {
 
     /// caller must ensure current token is If
     fn parse_if(&mut self) -> NodeRef {
-        assert_eq!(self.curr_token, Some(Token::If));
+        assert_eq!(self.curr_token, Some(If));
         match self.parse_expression(0) {
             Some(cond) => {
-                assert_eq!(self.curr_token, Some(Token::RParen));
+                assert_eq!(self.curr_token, Some(RParen));
                 self.next_token();
                 let lhs = self.parse_block();
 
                 // eat 'else' if there is one
-                while let Some(Token::Else) = self.curr_token {
+                while let Some(Else) = self.curr_token {
                     self.next_token();
                 }
 
-                assert_ne!(self.curr_token, Some(Token::RBrace));
+                assert_ne!(self.curr_token, Some(RBrace));
                 let rhs = self.parse_block();
 
                 match lhs {
@@ -94,20 +95,20 @@ impl Parser {
         let mut args: Vec<Rc<str>> = Vec::new();
 
         match (self.curr_token.clone(), self.peek_token.clone()) {
-            (Some(Token::Fn), Some(Token::LParen)) => {
+            (Some(Fn), Some(LParen)) => {
                 self.next_token();
                 self.next_token();
                 loop {
                     match self.curr_token.clone() {
-                        Some(Token::Ident(name)) => args.push(name),
-                        Some(Token::Comma) => (),
+                        Some(Ident(name)) => args.push(name),
+                        Some(Comma) => (),
                         _ => break,
                     }
                     self.next_token();
                 }
 
                 self.next_token();
-                assert_eq!(self.curr_token, Some(Token::LBrace));
+                assert_eq!(self.curr_token, Some(LBrace));
                 let body = self.parse_block();
 
                 node!(
@@ -138,12 +139,12 @@ impl Parser {
         while let Some(node) = self.parse_expression(0) {
             args.push(node.into());
             match self.peek_token {
-                Some(Token::Comma) => self.next_token(),
+                Some(Comma) => self.next_token(),
                 _ => break,
             }
         }
 
-        assert_eq!(self.curr_token, Some(Token::RParen));
+        assert_eq!(self.curr_token, Some(RParen));
 
         node!(
             NodeKind::Call(CallExpression {
@@ -157,15 +158,15 @@ impl Parser {
 
     pub fn parse_statement(&mut self) -> NodeRef {
         let node = match self.tokens.peek() {
-            Some(Token::Let) => {
+            Some(Let) => {
                 self.next_token();
                 self.next_token();
                 match self.curr_token {
-                    Some(Token::Ident(_)) => {
+                    Some(Ident(_)) => {
                         let lhs = self.parse_ident();
                         self.next_token();
                         match self.curr_token {
-                            Some(Token::Assign) => {
+                            Some(Assign) => {
                                 node!(NodeKind::Let, lhs, self.parse_expression(0))
                             }
                             _ => todo!(),
@@ -174,7 +175,7 @@ impl Parser {
                     _ => todo!(),
                 }
             }
-            Some(Token::Return) => {
+            Some(Return) => {
                 self.next_token();
                 node!(NodeKind::Return, None, self.parse_expression(0))
             }
@@ -182,7 +183,7 @@ impl Parser {
             None => None,
         };
 
-        while let Some(Token::Semicolon) = self.peek_token {
+        while let Some(Semicolon) = self.peek_token {
             self.next_token();
         }
 
@@ -191,7 +192,7 @@ impl Parser {
 
     fn parse_ident(&self) -> NodeRef {
         match &self.curr_token {
-            Some(Token::Ident(name)) => node!(NodeKind::Ident(name.clone()), None, None),
+            Some(Ident(name)) => node!(NodeKind::Ident(name.clone()), None, None),
             _ => todo!(),
         }
     }
@@ -201,7 +202,7 @@ impl Parser {
         let mut lhs = match &self.curr_token {
             // these are prefix...
             // INT
-            Some(Token::Int(s)) => {
+            Some(Int(s)) => {
                 let i = match s.parse() {
                     Ok(i) => i,
                     Err(_) => panic!(),
@@ -210,49 +211,49 @@ impl Parser {
                 node!(NodeKind::Int(i), None, None)
             }
             // IDENT
-            Some(Token::Ident(_)) => self.parse_ident(),
+            Some(Ident(_)) => self.parse_ident(),
             // TRUE
-            Some(Token::True) => node!(NodeKind::Bool(true), None, None),
+            Some(True) => node!(NodeKind::Bool(true), None, None),
             // FALSE
-            Some(Token::False) => node!(NodeKind::Bool(false), None, None),
+            Some(False) => node!(NodeKind::Bool(false), None, None),
             // NEG
-            Some(Token::Minus) => {
+            Some(Minus) => {
                 node!(NodeKind::PrefixOp(Op::Neg), None, self.parse_expression(0))
             }
             // NOT
-            Some(Token::Bang) => node!(NodeKind::PrefixOp(Op::Not), None, self.parse_expression(0)),
+            Some(Bang) => node!(NodeKind::PrefixOp(Op::Not), None, self.parse_expression(0)),
             // LET
-            Some(Token::Let) => self.parse_statement(),
+            Some(Let) => self.parse_statement(),
             // LPAREN
-            Some(Token::LParen) => self.parse_expression(0),
+            Some(LParen) => self.parse_expression(0),
             // BLOCK
-            Some(Token::LBrace) => self.parse_block(),
+            Some(LBrace) => self.parse_block(),
             // FUNCTION
-            Some(Token::Fn) => self.parse_fn(),
+            Some(Fn) => self.parse_fn(),
             // IF
-            Some(Token::If) => self.parse_if(),
+            Some(If) => self.parse_if(),
             _ => None,
         };
 
         loop {
             // ... and these are infix
             match self.peek_token {
-                Some(Token::RParen) => {
+                Some(RParen) => {
                     self.next_token();
                     break;
                 }
                 _ => {
                     let op = match self.peek_token {
-                        Some(Token::Assign) => Some(Op::Assign),
-                        Some(Token::Plus) => Some(Op::Add),
-                        Some(Token::Minus) => Some(Op::Sub),
-                        Some(Token::Asterisk) => Some(Op::Mul),
-                        Some(Token::Slash) => Some(Op::Div),
-                        Some(Token::Eq) => Some(Op::Eq),
-                        Some(Token::NotEq) => Some(Op::NotEq),
-                        Some(Token::Lt) => Some(Op::Lt),
-                        Some(Token::Gt) => Some(Op::Gt),
-                        Some(Token::LParen) => Some(Op::Call),
+                        Some(Assign) => Some(Op::Assign),
+                        Some(Plus) => Some(Op::Add),
+                        Some(Minus) => Some(Op::Sub),
+                        Some(Asterisk) => Some(Op::Mul),
+                        Some(Slash) => Some(Op::Div),
+                        Some(Eq) => Some(Op::Eq),
+                        Some(NotEq) => Some(Op::NotEq),
+                        Some(Lt) => Some(Op::Lt),
+                        Some(Gt) => Some(Op::Gt),
+                        Some(LParen) => Some(Op::Call),
                         _ => break,
                     };
 
@@ -277,6 +278,7 @@ impl Parser {
         lhs
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -587,18 +589,18 @@ mod tests {
         );
     }
 
-    // TODO parser needs a rewrite
-    // #[test]
-    // fn fn_call_with_if_arg() {
-    //     assert_parse!(
-    //         "f(2, if(x){1}{2})",
-    //         "Call f\
-    //             -Int(2)\
-    //             -If\
-    //             --Then\
-    //             ---Int(1)\
-    //             --Else\
-    //             ---Int(2)"
-    //     );
-    // }
+    //TODO parser needs a rewrite
+    #[test]
+    fn fn_call_with_if_arg() {
+        assert_parse!(
+            "f(2, if(x){1}{2})",
+            "Call f\
+                -Int(2)\
+                -If\
+                --Then\
+                ---Int(1)\
+                --Else\
+                ---Int(2)"
+        );
+    }
 }

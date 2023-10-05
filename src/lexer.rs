@@ -194,8 +194,10 @@ impl Lexer {
 
 #[cfg(test)]
 mod tests {
+    // TODO write better tests
     use super::*;
     use Token::*;
+
     #[test]
     fn symbols() {
         let source = "=+-!*/(){},;";
