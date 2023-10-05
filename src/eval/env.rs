@@ -53,7 +53,9 @@ impl Env {
 
 #[cfg(test)]
 mod tests {
-    use crate::eval::result::Value::*;
+    use crate::eval::result::Value;
+    use Value::Bool as Bool;
+    use Value::Int as Int;
 
     use super::*;
 

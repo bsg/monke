@@ -20,8 +20,14 @@ pub struct Eval {
     env: EnvRef,
 }
 
-use EvalResult::*;
-use Value::*;
+use EvalResult::Val as Val;
+use EvalResult::Return as Return;
+use EvalResult::Err as Err;
+
+use Value::Nil as Nil;
+use Value::Bool as Bool;
+use Value::Int as Int;
+use Value::Fn as Fn;
 
 impl Eval {
     pub fn new() -> Eval {
@@ -211,7 +217,7 @@ impl Eval {
 
 #[cfg(test)]
 mod tests {
-    use super::{Eval, EvalResult::*, Value::*};
+    use super::*;
 
     macro_rules! assert_eval_stmt {
         ($input:expr, $expected:expr) => {

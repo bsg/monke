@@ -103,54 +103,52 @@ impl Tokens {
     }
 
     fn next_token(&mut self) -> Token {
-        use Token::*;
-
         self.skip_whitespace();
         let token = match self.ch {
             Some(b'=') => match self.peek_char() {
                 Some(b'=') => {
                     self.read_char();
-                    Eq
+                    Token::Eq
                 }
-                _ => Assign,
+                _ => Token::Assign,
             },
-            Some(b'+') => Plus,
-            Some(b'-') => Minus,
+            Some(b'+') => Token::Plus,
+            Some(b'-') => Token::Minus,
             Some(b'!') => match self.peek_char() {
                 Some(b'=') => {
                     self.read_char();
-                    NotEq
+                    Token::NotEq
                 }
-                _ => Bang,
+                _ => Token::Bang,
             },
-            Some(b'*') => Asterisk,
-            Some(b'<') => Lt,
-            Some(b'>') => Gt,
-            Some(b'/') => Slash,
-            Some(b'(') => LParen,
-            Some(b')') => RParen,
-            Some(b'{') => LBrace,
-            Some(b'}') => RBrace,
-            Some(b',') => Comma,
-            Some(b';') => Semicolon,
+            Some(b'*') => Token::Asterisk,
+            Some(b'<') => Token::Lt,
+            Some(b'>') => Token::Gt,
+            Some(b'/') => Token::Slash,
+            Some(b'(') => Token::LParen,
+            Some(b')') => Token::RParen,
+            Some(b'{') => Token::LBrace,
+            Some(b'}') => Token::RBrace,
+            Some(b',') => Token::Comma,
+            Some(b';') => Token::Semicolon,
             Some(c) => match c {
                 (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
                     let ident = self.read_identifier();
                     return match ident.as_ref() {
-                        "fn" => Fn,
-                        "let" => Let,
-                        "true" => True,
-                        "false" => False,
-                        "if" => If,
-                        "else" => Else,
-                        "return" => Return,
-                        _ => Ident(ident),
+                        "fn" => Token::Fn,
+                        "let" => Token::Let,
+                        "true" => Token::True,
+                        "false" => Token::False,
+                        "if" => Token::If,
+                        "else" => Token::Else,
+                        "return" => Token::Return,
+                        _ => Token::Ident(ident),
                     };
                 }
-                (b'0'..=b'9') => return Int(self.read_number()),
-                _ => Illegal,
+                (b'0'..=b'9') => return Token::Int(self.read_number()),
+                _ => Token::Illegal,
             },
-            None => Eof,
+            None => Token::Eof,
         };
         self.read_char();
         token
