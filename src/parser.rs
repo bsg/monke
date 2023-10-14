@@ -35,6 +35,8 @@ impl Parser {
     }
 
     fn parse_block(&mut self) -> NodeRef {
+        assert_eq!(self.curr_token, Some(Token::LBrace));
+
         let mut statements: Vec<NodeRef> = Vec::new();
 
         match self.curr_token {
@@ -67,12 +69,16 @@ impl Parser {
                 let lhs = self.parse_block();
 
                 // eat 'else' if there is one
-                while let Some(Token::Else) = self.curr_token {
+                if let Some(Token::Else) = self.curr_token {
                     self.next_token();
+                    assert_eq!(self.curr_token, Some(Token::LBrace));
                 }
 
-                assert_ne!(self.curr_token, Some(Token::RBrace));
-                let rhs = self.parse_block();
+                let rhs = if self.curr_token == Some(Token::LBrace) {
+                    self.parse_block()
+                } else {
+                    None
+                };
 
                 match lhs {
                     Some(_) => node!(
@@ -553,6 +559,18 @@ mod tests {
             --Add\
             ---Int(1)\
             ---Int(2)"
+        );
+    }
+
+    #[test]
+    fn sequential_blocks() {
+        assert_parse!(
+            "{{1}{2}}",
+            "Block\
+            -Block\
+            --Int(1)\
+            -Block\
+            --Int(2)"
         );
     }
 
