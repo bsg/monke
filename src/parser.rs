@@ -45,8 +45,6 @@ impl Parser {
                     statements.push(Some(stmt.clone()));
                 }
 
-                assert_eq!(self.curr_token, Some(Token::RBrace));
-                self.next_token(); // Consume RBrace
                 node!(
                     NodeKind::Block(BlockExpression {
                         statements: Rc::from(statements.as_slice())
@@ -67,6 +65,7 @@ impl Parser {
                 assert_eq!(self.curr_token, Some(Token::RParen));
                 self.next_token();
                 let lhs = self.parse_block();
+                self.next_token();
 
                 // eat 'else' if there is one
                 if let Some(Token::Else) = self.curr_token {
@@ -563,7 +562,7 @@ mod tests {
     }
 
     #[test]
-    fn sequential_blocks() {
+    fn nested_sequential_blocks() {
         assert_parse!(
             "{{1}{2}}",
             "Block\
@@ -606,7 +605,19 @@ mod tests {
         );
     }
 
-    //TODO parser needs a rewrite
+    #[test]
+    fn fn_call_with_block_arg() {
+        assert_parse!(
+            "f(2, {a+1})",
+            "Call f\
+            -Int(2)\
+            -Block\
+            --Add\
+            ---Ident(a)\
+            ---Int(1)"
+        );
+    }
+
     #[test]
     fn fn_call_with_if_arg() {
         assert_parse!(
@@ -614,9 +625,12 @@ mod tests {
             "Call f\
                 -Int(2)\
                 -If\
-                --Then\
+                --Ident(x)\
+                -Then\
+                --Block\
                 ---Int(1)\
-                --Else\
+                -Else\
+                --Block\
                 ---Int(2)"
         );
     }

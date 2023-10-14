@@ -312,7 +312,6 @@ mod tests {
 
     #[test]
     fn fn_call() {
-        // TODO refactor after fixing parser bug
         let eval = Eval::new();
         eval.eval("let f = fn(x){x * x}".into());
         assert_eq!(eval.eval("f(2)".into()), Val(Int(4)));
@@ -320,10 +319,10 @@ mod tests {
 
     #[test]
     fn scope() {
-        // TODO refactor after fixing parser bug
         let eval = Eval::new();
         eval.eval("let x = 1".into());
         eval.eval("let f = fn(){x = 2}".into());
+        assert_eq!(eval.eval("x".into()), Val(Int(1)));
         eval.eval("f()".into());
         assert_eq!(eval.eval("x".into()), Val(Int(2)));
     }

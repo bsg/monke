@@ -155,12 +155,12 @@ impl fmt::Display for Node {
                         .map(|node| fmt_with_indent(node, f, indent + 1));
 
                     if let Some(node) = node.left.as_ref() {
-                        f.write_str("Then\n")?;
+                        f.write_fmt(format_args!("{}Then\n", "-".repeat(indent)))?;
                         fmt_with_indent(node, f, indent + 1)?;
                     }
 
                     if let Some(node) = node.right.as_ref() {
-                        f.write_str("Else\n")?;
+                        f.write_fmt(format_args!("{}Else\n", "-".repeat(indent)))?;
                         fmt_with_indent(node, f, indent + 1)?;
                     }
 
