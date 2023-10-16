@@ -65,15 +65,16 @@ impl Parser {
                 assert_eq!(self.curr_token, Some(Token::RParen));
                 self.next_token();
                 let lhs = self.parse_block();
-                self.next_token();
+                //self.next_token();
 
                 // eat 'else' if there is one
-                if let Some(Token::Else) = self.curr_token {
+                if let Some(Token::Else) = self.peek_token {
                     self.next_token();
-                    assert_eq!(self.curr_token, Some(Token::LBrace));
+                    assert_eq!(self.peek_token, Some(Token::LBrace));
                 }
 
-                let rhs = if self.curr_token == Some(Token::LBrace) {
+                let rhs = if self.peek_token == Some(Token::LBrace) {
+                    self.next_token();
                     self.parse_block()
                 } else {
                     None
@@ -626,7 +627,7 @@ mod tests {
     #[test]
     fn fn_call_with_if_arg() {
         assert_parse!(
-            "f(2, if(x){1}{2})",
+            "f(2, if(x){1}else{2})",
             "Call f\
                 -Int(2)\
                 -If\
@@ -643,17 +644,18 @@ mod tests {
     #[test]
     fn sequential_ifs() {
         assert_parse!(
-            "if(x){1}if(y){2}",
-            "If
-            -Ident(x)
-            Then
-            -Block
-            --Int(1)
-            If
-            -Ident(y)
-            Then
-            -Block
-            --Int(2)"
+            "{if(x){1}if(y){2}}",
+            "Block\
+            -If\
+            --Ident(x)\
+            -Then\
+            --Block\
+            ---Int(1)\
+            -If\
+            --Ident(y)\
+            -Then\
+            --Block\
+            ---Int(2)"
         );
     }
 }

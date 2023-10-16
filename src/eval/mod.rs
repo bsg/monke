@@ -111,9 +111,10 @@ impl Eval {
         let new_env = Env::from(env);
         for stmt in block.statements.iter().cloned() {
             match Self::eval_ast(new_env.clone(), stmt) {
-                val @ Val(_) | val @ Return(_) => {
+                val @ Val(_) => {
                     rv = val;
                 }
+                val @ Return(_) => return val,
                 err @ Err(_) => return err,
             }
         }
@@ -321,7 +322,7 @@ mod tests {
 
     #[test]
     fn block_with_early_return() {
-        assert_eval_stmt!("{1;return 2;3}", Val(Int(3)));
+        assert_eval_stmt!("{1;return 2;3}", Return(Int(2)));
     }
 
     #[test]
@@ -455,6 +456,37 @@ mod tests {
                     }
                 }
                 
+            }
+        "#;
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(
+            ctx.eval("fizzbuzz(15)".into()),
+            Return(String("fizzbuzz".into()))
+        );
+        assert_eq!(
+            ctx.eval("fizzbuzz(3)".into()),
+            Return(String("fizz".into()))
+        );
+        assert_eq!(
+            ctx.eval("fizzbuzz(5)".into()),
+            Return(String("buzz".into()))
+        );
+    }
+
+    #[test]
+    fn fizzbuzz2() {
+        let code = r#"
+            let fizzbuzz = fn(n) {
+                if(n % 3 == 0 && n % 5 == 0) {
+                    return "fizzbuzz";
+                }
+                if(n % 3 == 0) {
+                    return "fizz";
+                }
+                if(n % 5 == 0) {
+                    return "buzz";
+                } 
             }
         "#;
         let ctx = Eval::new();
