@@ -255,6 +255,8 @@ impl Parser {
                         Some(Token::NotEq) => Some(Op::NotEq),
                         Some(Token::Lt) => Some(Op::Lt),
                         Some(Token::Gt) => Some(Op::Gt),
+                        Some(Token::Le) => Some(Op::Le),
+                        Some(Token::Ge) => Some(Op::Ge),
                         Some(Token::LParen) => Some(Op::Call),
                         _ => break,
                     };

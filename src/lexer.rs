@@ -16,6 +16,8 @@ pub enum Token {
     Slash,
     Lt,
     Gt,
+    Le,
+    Ge,
     Eq,
     NotEq,
 
@@ -122,8 +124,20 @@ impl Tokens {
                 _ => Token::Bang,
             },
             Some(b'*') => Token::Asterisk,
-            Some(b'<') => Token::Lt,
-            Some(b'>') => Token::Gt,
+            Some(b'<') => match self.peek_char() {
+                Some(b'=') => {
+                    self.read_char();
+                    Token::Le
+                }
+                _ => Token::Lt,
+            },
+            Some(b'>') => match self.peek_char() {
+                Some(b'=') => {
+                    self.read_char();
+                    Token::Ge
+                }
+                _ => Token::Gt,
+            },
             Some(b'/') => Token::Slash,
             Some(b'(') => Token::LParen,
             Some(b')') => Token::RParen,

@@ -7,6 +7,8 @@ pub enum Op {
     NotEq,
     Lt,
     Gt,
+    Le,
+    Ge,
     Add,
     Sub,
     Mul,
@@ -24,6 +26,8 @@ impl std::fmt::Display for Op {
             Op::NotEq => f.write_str("!="),
             Op::Lt => f.write_str("<"),
             Op::Gt => f.write_str(">"),
+            Op::Le => f.write_str("<="),
+            Op::Ge => f.write_str(">="),
             Op::Add => f.write_str("+"),
             Op::Sub => f.write_str("-"),
             Op::Mul => f.write_str("*"),
@@ -39,7 +43,7 @@ impl Op {
     pub fn precedence(&self) -> i32 {
         match self {
             Op::Eq | Op::NotEq => 1,
-            Op::Lt | Op::Gt => 2,
+            Op::Lt | Op::Gt | Op::Le | Op::Ge => 2,
             Op::Add | Op::Sub => 3,
             Op::Mul | Op::Div => 4,
             _ => 0,

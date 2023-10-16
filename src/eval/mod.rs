@@ -44,7 +44,7 @@ impl Eval {
                     Op::Assign => unreachable!(),
                     Op::Eq => Val(Bool(lhs == rhs)),
                     Op::NotEq => Val(Bool(lhs != rhs)),
-                    Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt => {
+                    Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt | Op::Le | Op::Ge => {
                         // FIXME ugly
                         match (lhs, rhs) {
                             (Int(a), Int(b)) => match op {
@@ -54,6 +54,8 @@ impl Eval {
                                 Op::Div => Val(Int(a / b)),
                                 Op::Lt => Val(Bool(a < b)),
                                 Op::Gt => Val(Bool(a > b)),
+                                Op::Le => Val(Bool(a <= b)),
+                                Op::Ge => Val(Bool(a >= b)),
                                 _ => unreachable!(),
                             },
                             other => err!(
@@ -393,5 +395,24 @@ mod tests {
         let ctx = Eval::new();
         ctx.eval(code.into());
         assert_eq!(ctx.eval("applyFunc(2, 2, fn(a, b) { a + b });".into()), Val(Int(4)));
+    }
+
+    #[test]
+    fn fibonacci() {
+        let code = "
+            let fibonacci = fn(n) {
+                if(n <= 1) {
+                    1;
+                } else {
+                    n + fibonacci(n - 1);
+                }
+            }
+        ";
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(ctx.eval("fibonacci(0)".into()), Val(Int(1)));
+        assert_eq!(ctx.eval("fibonacci(1)".into()), Val(Int(1)));
+        assert_eq!(ctx.eval("fibonacci(2)".into()), Val(Int(3)));
+        assert_eq!(ctx.eval("fibonacci(3)".into()), Val(Int(6)));
     }
 }
