@@ -148,8 +148,6 @@ impl Parser {
             }
         }
 
-        assert_eq!(self.curr_token, Some(Token::RParen));
-
         node!(
             NodeKind::Call(CallExpression {
                 ident,

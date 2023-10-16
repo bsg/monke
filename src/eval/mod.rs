@@ -382,5 +382,16 @@ mod tests {
         let ctx = Eval::new();
         ctx.eval(code.into());
         assert_eq!(ctx.eval("applyFunc(2, 2, add);".into()), Val(Int(4)));
+        assert_eq!(ctx.eval("applyFunc(4, 2, sub);".into()), Val(Int(2)));
+    }
+
+    #[test]
+    fn function_literals() {
+        let code = "
+            let applyFunc = fn(a, b, func) { func(a, b) };
+        ";
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(ctx.eval("applyFunc(2, 2, fn(a, b) { a + b });".into()), Val(Int(4)));
     }
 }
