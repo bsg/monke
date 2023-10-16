@@ -1,13 +1,13 @@
 use crate::ast::{FnExpression, NodeRef};
 
-use super::error::Error;
+use super::{error::Error, env::EnvRef};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Nil,
     Int(i64),
     Bool(bool),
-    Fn(FnExpression, NodeRef),
+    Fn(FnExpression, NodeRef, EnvRef),
 }
 
 impl Value {

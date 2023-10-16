@@ -4,6 +4,7 @@ use super::result::Value;
 
 pub type EnvRef = Rc<RefCell<Env>>;
 
+#[derive(PartialEq, Clone)]
 pub struct Env {
     store: RefCell<BTreeMap<Rc<str>, Value>>,
     outer: Option<EnvRef>,
@@ -48,6 +49,13 @@ impl Env {
                 None => None,
             }
         }
+    }
+}
+
+impl std::fmt::Debug for Env {
+    // TODO pretty print
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Env").field("store", &self.store).field("outer", &self.outer).finish()
     }
 }
 

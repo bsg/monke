@@ -20,14 +20,14 @@ pub struct Eval {
     env: EnvRef,
 }
 
-use EvalResult::Val as Val;
-use EvalResult::Return as Return;
-use EvalResult::Err as Err;
+use EvalResult::Err;
+use EvalResult::Return;
+use EvalResult::Val;
 
-use Value::Nil as Nil;
-use Value::Bool as Bool;
-use Value::Int as Int;
-use Value::Fn as Fn;
+use Value::Bool;
+use Value::Fn;
+use Value::Int;
+use Value::Nil;
 
 impl Eval {
     pub fn new() -> Eval {
@@ -85,11 +85,11 @@ impl Eval {
         }
     }
 
-    fn eval_block(env: EnvRef, block: Rc<BlockExpression>) -> EvalResult {
+    fn eval_block(env: EnvRef, block: BlockExpression) -> EvalResult {
         let mut rv = Val(Nil);
-        let env = Env::from(env);
+        let new_env = Env::from(env);
         for stmt in block.statements.iter().cloned() {
-            match Self::eval_ast(env.clone(), stmt) {
+            match Self::eval_ast(new_env.clone(), stmt) {
                 val @ Val(_) | val @ Return(_) => {
                     rv = val;
                 }
@@ -99,22 +99,18 @@ impl Eval {
         rv
     }
 
-    fn eval_assign(env: EnvRef, left: NodeRef, right: NodeRef, is_let: bool) -> EvalResult {
-        match left {
+    fn eval_assign(env: EnvRef, lhs: NodeRef, rhs: NodeRef, is_let: bool) -> EvalResult {
+        match lhs {
             Some(lhs) => match &lhs.kind {
                 NodeKind::Ident(name) => {
-                    if is_let {
-                        env.borrow_mut().bind_local(name.clone(), Nil);
-                    } else {
-                        env.borrow_mut().bind(name.clone(), Nil);
-                    }
-                    match Self::eval_ast(env.clone(), right.to_owned()) {
+                    match Self::eval_ast(env.clone(), rhs.clone()) {
                         Val(val) | Return(val) => {
-                            if env.borrow_mut().bind(name.clone(), val) {
-                                Val(Nil)
+                            if is_let {
+                                env.borrow_mut().bind_local(name.clone(), val);
                             } else {
-                                todo!()
+                                env.borrow_mut().bind(name.clone(), val);
                             }
+                            Val(Nil) // TODO should EvalResult have something like Ok?
                         }
                         Err(_) => todo!(),
                     }
@@ -128,9 +124,9 @@ impl Eval {
     fn eval_ast(env: EnvRef, node_ref: NodeRef) -> EvalResult {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
-                NodeKind::Ident(name) => match env.borrow().get(name) {
+                NodeKind::Ident(name) => match env.borrow().get(name.clone()) {
                     Some(val) => Val(val),
-                    None => todo!(),
+                    None => err!("Unknown ident {}", name),
                 },
                 NodeKind::Int(i) => Val(Int(i)),
                 NodeKind::Bool(b) => Val(Bool(b)),
@@ -176,11 +172,10 @@ impl Eval {
                         err @ Err(_) => err,
                     }
                 }
-                NodeKind::Block(block) => Self::eval_block(env, Rc::new(block)),
-                NodeKind::Fn(func) => Val(Fn(func, node.right.clone())),
+                NodeKind::Block(block) => Self::eval_block(env, block),
+                NodeKind::Fn(func) => Val(Fn(func, node.right.clone(), Env::from(env))),
                 NodeKind::Call(call) => match env.borrow().get(call.ident.clone()) {
-                    Some(Fn(func, ast)) => {
-                        let new_env = Env::from(env.to_owned());
+                    Some(Fn(func, ast, fnenv)) => {
                         if func.args.len() != call.args.len() {
                             return err!(
                                 "function {} expects {} arguments",
@@ -189,14 +184,14 @@ impl Eval {
                             );
                         }
                         for (name, arg) in func.args.iter().zip(call.args.iter()) {
-                            match Self::eval_ast(env.to_owned(), arg.to_owned()) {
+                            match Self::eval_ast(fnenv.clone(), arg.clone()) {
                                 Val(val) | Return(val) => {
-                                    new_env.borrow_mut().bind_local(name.clone(), val);
+                                    fnenv.borrow_mut().bind_local(name.clone(), val);
                                 }
                                 Err(_) => todo!(),
                             }
                         }
-                        Self::eval_ast(new_env, ast)
+                        Self::eval_ast(fnenv, ast)
                     }
                     _ => todo!(),
                 },
@@ -205,13 +200,20 @@ impl Eval {
         }
     }
 
-    fn eval_statement(env: EnvRef, stmt: Rc<str>) -> EvalResult {
-        let mut parser = Parser::new(&stmt);
-        Self::eval_ast(env, parser.parse_statement())
-    }
+    pub fn eval(&self, code: Rc<str>) -> EvalResult {
+        let mut last_result = Val(Nil);
+        let mut parser = Parser::new(&code);
 
-    pub fn eval(&self, stmt: Rc<str>) -> EvalResult {
-        Self::eval_statement(self.env.clone(), stmt)
+        loop {
+            let ast = parser.parse_statement();
+            if ast.is_some() {
+                last_result = Self::eval_ast(self.env.clone(), ast);
+            } else {
+                break;
+            }
+        }
+
+        last_result
     }
 }
 
@@ -312,18 +314,60 @@ mod tests {
 
     #[test]
     fn fn_call() {
-        let eval = Eval::new();
-        eval.eval("let f = fn(x){x * x}".into());
-        assert_eq!(eval.eval("f(2)".into()), Val(Int(4)));
+        let ctx = Eval::new();
+
+        let code = "
+            let f = fn(x){x * x};
+            f(2);
+        ";
+        assert_eq!(ctx.eval(code.into()), Val(Int(4)));
+
+        let code = "
+            let g = fn(x){x * 10}
+            g(2);
+        ";
+        assert_eq!(ctx.eval(code.into()), Val(Int(20)));
     }
 
     #[test]
-    fn scope() {
-        let eval = Eval::new();
-        eval.eval("let x = 1".into());
-        eval.eval("let f = fn(){x = 2}".into());
-        assert_eq!(eval.eval("x".into()), Val(Int(1)));
-        eval.eval("f()".into());
-        assert_eq!(eval.eval("x".into()), Val(Int(2)));
+    fn nested_scopes() {
+        let code = "
+            {
+                let x = 1;
+                {
+                    let y = 2;
+                    {
+                        x + y;
+                    }
+                }
+            }
+        ";
+        let ctx = Eval::new();
+        assert_eq!(ctx.eval(code.into()), Val(Int(3)));
+    }
+
+    #[test]
+    fn fn_scope() {
+        let ctx = Eval::new();
+        let code = "
+            let x = 1;
+            let f = fn(){x = 2};
+        ";
+        ctx.eval(code.into());
+        assert_eq!(ctx.eval("x".into()), Val(Int(1)));
+        ctx.eval("f()".into());
+        assert_eq!(ctx.eval("x".into()), Val(Int(2)));
+    }
+
+    #[test]
+    fn closure() {
+        let code = "
+            let newAdder = fn(x) {
+                fn(y) { x + y };
+            };
+            let addTwo = newAdder(2);
+            addTwo(2);
+        ";
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(4)));
     }
 }
