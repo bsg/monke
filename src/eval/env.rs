@@ -54,6 +54,7 @@ impl Env {
 
 impl std::fmt::Debug for Env {
     // TODO pretty print
+    // NOTE circular reference due to Value::Fn having a reference to the env at declaration site
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Env").field("store", &self.store).field("outer", &self.outer).finish()
     }
