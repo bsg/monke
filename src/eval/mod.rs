@@ -77,6 +77,14 @@ impl Eval {
                                 Op::Or => Val(Bool(a || b)),
                                 _ => todo!(),
                             },
+                            (String(a), String(b)) => match op {
+                                Op::Add => {
+                                    let mut s = a.to_string();
+                                    s.push_str(&b);
+                                    Val(String(Rc::from(s.as_str())))
+                                },
+                                _ => todo!(),
+                            },
                             other => err!(
                                 "unknown operator {} {} {}",
                                 other.0.type_str(),
@@ -487,6 +495,36 @@ mod tests {
                 if(n % 5 == 0) {
                     return "buzz";
                 } 
+            }
+        "#;
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(
+            ctx.eval("fizzbuzz(15)".into()),
+            Return(String("fizzbuzz".into()))
+        );
+        assert_eq!(
+            ctx.eval("fizzbuzz(3)".into()),
+            Return(String("fizz".into()))
+        );
+        assert_eq!(
+            ctx.eval("fizzbuzz(5)".into()),
+            Return(String("buzz".into()))
+        );
+    }
+
+    #[test]
+    fn fizzbuzz3() {
+        let code = r#"
+            let fizzbuzz = fn(n) {
+                let s = "";
+                if(n % 3 == 0) {
+                    s = s + "fizz";
+                }
+                if(n % 5 == 0) {
+                    s = s + "buzz";
+                }
+                return s;
             }
         "#;
         let ctx = Eval::new();
