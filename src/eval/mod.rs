@@ -184,11 +184,11 @@ impl Eval {
                             );
                         }
                         for (name, arg) in func.args.iter().zip(call.args.iter()) {
-                            match Self::eval_ast(fnenv.clone(), arg.clone()) {
+                            match Self::eval_ast(env.clone(), arg.clone()) {
                                 Val(val) | Return(val) => {
                                     fnenv.borrow_mut().bind_local(name.clone(), val);
                                 }
-                                Err(_) => todo!(),
+                                err @ Err(_) => return err,
                             }
                         }
                         Self::eval_ast(fnenv, ast)
@@ -323,10 +323,11 @@ mod tests {
         assert_eq!(ctx.eval(code.into()), Val(Int(4)));
 
         let code = "
-            let g = fn(x){x * 10}
-            g(2);
+            let g = fn(x, y){x * y}
+            g(2, 10);
         ";
         assert_eq!(ctx.eval(code.into()), Val(Int(20)));
+        assert_eq!(ctx.eval("f(g(2, 10));".into()), Val(Int(400)));
     }
 
     #[test]
@@ -369,5 +370,17 @@ mod tests {
             addTwo(2);
         ";
         assert_eq!(Eval::new().eval(code.into()), Val(Int(4)));
+    }
+
+    #[test]
+    fn functions_as_arguments() {
+        let code = "
+            let add = fn(a, b) { a + b };
+            let sub = fn(a, b) { a - b };
+            let applyFunc = fn(a, b, func) { func(a, b) };
+        ";
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(ctx.eval("applyFunc(2, 2, add);".into()), Val(Int(4)));
     }
 }
