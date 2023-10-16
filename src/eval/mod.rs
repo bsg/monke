@@ -1,3 +1,5 @@
+// TODO logical and/or should short circuit
+
 mod env;
 mod error;
 mod result;
@@ -28,6 +30,7 @@ use Value::Bool;
 use Value::Fn;
 use Value::Int;
 use Value::Nil;
+use Value::String;
 
 impl Eval {
     pub fn new() -> Eval {
@@ -44,7 +47,17 @@ impl Eval {
                     Op::Assign => unreachable!(),
                     Op::Eq => Val(Bool(lhs == rhs)),
                     Op::NotEq => Val(Bool(lhs != rhs)),
-                    Op::Add | Op::Sub | Op::Mul | Op::Div | Op::Lt | Op::Gt | Op::Le | Op::Ge => {
+                    Op::Add
+                    | Op::Sub
+                    | Op::Mul
+                    | Op::Div
+                    | Op::Mod
+                    | Op::Lt
+                    | Op::Gt
+                    | Op::Le
+                    | Op::Ge
+                    | Op::And
+                    | Op::Or => {
                         // FIXME ugly
                         match (lhs, rhs) {
                             (Int(a), Int(b)) => match op {
@@ -52,11 +65,17 @@ impl Eval {
                                 Op::Sub => Val(Int(a - b)),
                                 Op::Mul => Val(Int(a * b)),
                                 Op::Div => Val(Int(a / b)),
+                                Op::Mod => Val(Int(a % b)),
                                 Op::Lt => Val(Bool(a < b)),
                                 Op::Gt => Val(Bool(a > b)),
                                 Op::Le => Val(Bool(a <= b)),
                                 Op::Ge => Val(Bool(a >= b)),
-                                _ => unreachable!(),
+                                _ => todo!(),
+                            },
+                            (Bool(a), Bool(b)) => match op {
+                                Op::And => Val(Bool(a && b)),
+                                Op::Or => Val(Bool(a || b)),
+                                _ => todo!(),
                             },
                             other => err!(
                                 "unknown operator {} {} {}",
@@ -132,6 +151,7 @@ impl Eval {
                 },
                 NodeKind::Int(i) => Val(Int(i)),
                 NodeKind::Bool(b) => Val(Bool(b)),
+                NodeKind::String(b) => Val(String(b)),
                 NodeKind::PrefixOp(op) => match Self::eval_ast(env, node.right.to_owned()) {
                     err @ Err(_) => err,
                     Val(val) | Return(val) => Self::eval_prefix(&op, val),
@@ -394,7 +414,10 @@ mod tests {
         ";
         let ctx = Eval::new();
         ctx.eval(code.into());
-        assert_eq!(ctx.eval("applyFunc(2, 2, fn(a, b) { a + b });".into()), Val(Int(4)));
+        assert_eq!(
+            ctx.eval("applyFunc(2, 2, fn(a, b) { a + b });".into()),
+            Val(Int(4))
+        );
     }
 
     #[test]
@@ -414,5 +437,39 @@ mod tests {
         assert_eq!(ctx.eval("fibonacci(1)".into()), Val(Int(1)));
         assert_eq!(ctx.eval("fibonacci(2)".into()), Val(Int(3)));
         assert_eq!(ctx.eval("fibonacci(3)".into()), Val(Int(6)));
+    }
+
+    #[test]
+    fn fizzbuzz1() {
+        let code = r#"
+            let fizzbuzz = fn(n) {
+                if(n % 3 == 0 && n % 5 == 0) {
+                    return "fizzbuzz";
+                } else {
+                    if(n % 3 == 0) {
+                        return "fizz";
+                    } else {
+                        if(n % 5 == 0) {
+                            return "buzz";
+                        }   
+                    }
+                }
+                
+            }
+        "#;
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(
+            ctx.eval("fizzbuzz(15)".into()),
+            Return(String("fizzbuzz".into()))
+        );
+        assert_eq!(
+            ctx.eval("fizzbuzz(3)".into()),
+            Return(String("fizz".into()))
+        );
+        assert_eq!(
+            ctx.eval("fizzbuzz(5)".into()),
+            Return(String("buzz".into()))
+        );
     }
 }

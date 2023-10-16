@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::ast::{FnExpression, NodeRef};
 
 use super::{error::Error, env::EnvRef};
@@ -7,6 +9,7 @@ pub enum Value {
     Nil,
     Int(i64),
     Bool(bool),
+    String(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
 }
 
@@ -16,6 +19,7 @@ impl Value {
             Value::Nil => "Nil",
             Value::Int(_) => "Int",
             Value::Bool(_) => "Bool",
+            Value::String(_) => "String",
             Value::Fn(..) => "Fn",
         }
     }
@@ -27,6 +31,7 @@ impl std::fmt::Display for Value {
             Value::Nil => f.write_str("nil"),
             Value::Int(val) => f.write_fmt(format_args!("{}", val)),
             Value::Bool(val) => f.write_fmt(format_args!("{}", val)),
+            Value::String(val) => f.write_fmt(format_args!("{}", val)),
             Value::Fn(..) => f.write_str("fn"),
         }
     }

@@ -13,8 +13,11 @@ pub enum Op {
     Sub,
     Mul,
     Div,
+    Mod,
     Neg,
     Not,
+    And,
+    Or,
     Call,
 }
 
@@ -32,8 +35,11 @@ impl std::fmt::Display for Op {
             Op::Sub => f.write_str("-"),
             Op::Mul => f.write_str("*"),
             Op::Div => f.write_str("/"),
+            Op::Mod => f.write_str("%"),
             Op::Neg => f.write_str("-"),
             Op::Not => f.write_str("!"),
+            Op::And => f.write_str("&&"),
+            Op::Or => f.write_str("||"),
             Op::Call => f.write_str(""),
         }
     }
@@ -45,7 +51,7 @@ impl Op {
             Op::Eq | Op::NotEq => 1,
             Op::Lt | Op::Gt | Op::Le | Op::Ge => 2,
             Op::Add | Op::Sub => 3,
-            Op::Mul | Op::Div => 4,
+            Op::Mul | Op::Div | Op::Mod => 4,
             _ => 0,
         }
     }
@@ -84,6 +90,7 @@ pub enum NodeKind {
     Ident(Rc<str>),
     Int(i64),
     Bool(bool),
+    String(Rc<str>),
     InfixOp(Op),
     PrefixOp(Op),
     Let,
@@ -107,6 +114,7 @@ impl fmt::Debug for NodeKind {
             Self::Ident(arg0) => f.debug_tuple("Ident").field(arg0).finish(),
             Self::Int(arg0) => f.debug_tuple("Int").field(arg0).finish(),
             Self::Bool(arg0) => f.debug_tuple("Bool").field(arg0).finish(),
+            Self::String(arg0) => f.debug_tuple("String").field(arg0).finish(),
             Self::InfixOp(arg0) => f.debug_tuple("Op").field(arg0).finish(),
             Self::PrefixOp(arg0) => f.debug_tuple("Op").field(arg0).finish(),
             Self::Let => write!(f, "Let"),
@@ -136,6 +144,7 @@ impl fmt::Display for Node {
                     NodeKind::Ident(s) => format!("Ident({})\n", s),
                     NodeKind::Int(i) => format!("Int({})\n", i),
                     NodeKind::Bool(b) => format!("Bool({})\n", b),
+                    NodeKind::String(s) => format!("String({})\n", s),
                     NodeKind::InfixOp(op) => format!("{:?}\n", op),
                     NodeKind::PrefixOp(op) => format!("{:?}\n", op),
                     NodeKind::Let => "Let\n".to_string(),

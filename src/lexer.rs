@@ -6,6 +6,7 @@ pub enum Token {
     Eof,
     Ident(Rc<str>),
     Int(Rc<str>),
+    String(Rc<str>),
 
     // Operators
     Assign,
@@ -14,6 +15,11 @@ pub enum Token {
     Bang,
     Asterisk,
     Slash,
+    Percent,
+    And,
+    Or,
+    BitwiseAnd,
+    BitwiseOr,
     Lt,
     Gt,
     Le,
@@ -104,6 +110,19 @@ impl Tokens {
         Rc::from(self.input[pos_start..self.position].to_string())
     }
 
+    fn read_string(&mut self) -> Rc<str> {
+        let pos_start = self.position;
+
+        self.read_char();
+        // TODO handle missing end quote
+        while self.ch != Some(b'"') {
+            self.read_char();
+        }
+        self.read_char();
+
+        Rc::from(self.input[pos_start+1..self.position-1].to_string())
+    }
+
     fn next_token(&mut self) -> Token {
         self.skip_whitespace();
         let token = match self.ch {
@@ -139,12 +158,28 @@ impl Tokens {
                 _ => Token::Gt,
             },
             Some(b'/') => Token::Slash,
+            Some(b'%') => Token::Percent,
+            Some(b'&') => match self.peek_char() {
+                Some(b'&') => {
+                    self.read_char();
+                    Token::And
+                }
+                _ => Token::BitwiseAnd,
+            },
+            Some(b'|') => match self.peek_char() {
+                Some(b'|') => {
+                    self.read_char();
+                    Token::Or
+                }
+                _ => Token::BitwiseOr,
+            },
             Some(b'(') => Token::LParen,
             Some(b')') => Token::RParen,
             Some(b'{') => Token::LBrace,
             Some(b'}') => Token::RBrace,
             Some(b',') => Token::Comma,
             Some(b';') => Token::Semicolon,
+            Some(b'"') => Token::String(self.read_string()),
             Some(c) => match c {
                 (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
                     let ident = self.read_identifier();
@@ -233,6 +268,11 @@ mod tests {
     fn multichar_token() {
         Lexer::new("==").tokens().for_each(|t| assert_eq!(t, Eq));
         Lexer::new("!=").tokens().for_each(|t| assert_eq!(t, NotEq));
+    }
+
+    #[test]
+    fn string() {
+        assert_eq!(Lexer::new(r#""some string""#).tokens().next_token(), String("some string".into()));
     }
 
     #[test]

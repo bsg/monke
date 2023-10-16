@@ -212,6 +212,8 @@ impl Parser {
 
                 node!(NodeKind::Int(i), None, None)
             }
+            // STRING
+            Some(Token::String(s)) => node!(NodeKind::String(s.clone()), None, None),
             // IDENT
             Some(Token::Ident(_)) => self.parse_ident(),
             // TRUE
@@ -251,12 +253,15 @@ impl Parser {
                         Some(Token::Minus) => Some(Op::Sub),
                         Some(Token::Asterisk) => Some(Op::Mul),
                         Some(Token::Slash) => Some(Op::Div),
+                        Some(Token::Percent) => Some(Op::Mod),
                         Some(Token::Eq) => Some(Op::Eq),
                         Some(Token::NotEq) => Some(Op::NotEq),
                         Some(Token::Lt) => Some(Op::Lt),
                         Some(Token::Gt) => Some(Op::Gt),
                         Some(Token::Le) => Some(Op::Le),
                         Some(Token::Ge) => Some(Op::Ge),
+                        Some(Token::And) => Some(Op::And),
+                        Some(Token::Or) => Some(Op::Or),
                         Some(Token::LParen) => Some(Op::Call),
                         _ => break,
                     };
@@ -632,6 +637,23 @@ mod tests {
                 -Else\
                 --Block\
                 ---Int(2)"
+        );
+    }
+
+    #[test]
+    fn sequential_ifs() {
+        assert_parse!(
+            "if(x){1}if(y){2}",
+            "If
+            -Ident(x)
+            Then
+            -Block
+            --Int(1)
+            If
+            -Ident(y)
+            Then
+            -Block
+            --Int(2)"
         );
     }
 }
