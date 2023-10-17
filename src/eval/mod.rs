@@ -42,60 +42,33 @@ impl Eval {
             (Val(lhs), Val(rhs))
             | (Val(lhs), Return(rhs))
             | (Return(lhs), Val(rhs))
-            | (Return(lhs), Return(rhs)) => {
-                match op {
-                    Op::Assign => unreachable!(),
-                    Op::Eq => Val(Bool(lhs == rhs)),
-                    Op::NotEq => Val(Bool(lhs != rhs)),
-                    Op::Add
-                    | Op::Sub
-                    | Op::Mul
-                    | Op::Div
-                    | Op::Mod
-                    | Op::Lt
-                    | Op::Gt
-                    | Op::Le
-                    | Op::Ge
-                    | Op::And
-                    | Op::Or => {
-                        // FIXME ugly
-                        match (lhs, rhs) {
-                            (Int(a), Int(b)) => match op {
-                                Op::Add => Val(Int(a + b)),
-                                Op::Sub => Val(Int(a - b)),
-                                Op::Mul => Val(Int(a * b)),
-                                Op::Div => Val(Int(a / b)),
-                                Op::Mod => Val(Int(a % b)),
-                                Op::Lt => Val(Bool(a < b)),
-                                Op::Gt => Val(Bool(a > b)),
-                                Op::Le => Val(Bool(a <= b)),
-                                Op::Ge => Val(Bool(a >= b)),
-                                _ => todo!(),
-                            },
-                            (Bool(a), Bool(b)) => match op {
-                                Op::And => Val(Bool(a && b)),
-                                Op::Or => Val(Bool(a || b)),
-                                _ => todo!(),
-                            },
-                            (String(a), String(b)) => match op {
-                                Op::Add => {
-                                    let mut s = a.to_string();
-                                    s.push_str(&b);
-                                    Val(String(Rc::from(s.as_str())))
-                                },
-                                _ => todo!(),
-                            },
-                            other => err!(
-                                "unknown operator {} {} {}",
-                                other.0.type_str(),
-                                op,
-                                other.1.type_str()
-                            ),
-                        }
-                    }
-                    Op::Neg | Op::Not | Op::Call => unreachable!(),
+            | (Return(lhs), Return(rhs)) => match (op, lhs, rhs) {
+                (Op::Assign, ..) => unreachable!(),
+                (Op::Eq, lhs, rhs) => Val(Bool(lhs == rhs)),
+                (Op::NotEq, lhs, rhs) => Val(Bool(lhs != rhs)),
+                (Op::Add, Int(a), Int(b)) => Val(Int(a + b)),
+                (Op::Sub, Int(a), Int(b)) => Val(Int(a - b)),
+                (Op::Mul, Int(a), Int(b)) => Val(Int(a * b)),
+                (Op::Div, Int(a), Int(b)) => Val(Int(a / b)),
+                (Op::Mod, Int(a), Int(b)) => Val(Int(a % b)),
+                (Op::Lt, Int(a), Int(b)) => Val(Bool(a < b)),
+                (Op::Gt, Int(a), Int(b)) => Val(Bool(a > b)),
+                (Op::Le, Int(a), Int(b)) => Val(Bool(a <= b)),
+                (Op::Ge, Int(a), Int(b)) => Val(Bool(a >= b)),
+                (Op::And, Bool(a), Bool(b)) => Val(Bool(a && b)),
+                (Op::Or, Bool(a), Bool(b)) => Val(Bool(a || b)),
+                (Op::Add, String(a), String(b)) => {
+                    let mut s = a.to_string();
+                    s.push_str(&b);
+                    Val(String(Rc::from(s.as_str())))
                 }
-            }
+                (_, lhs, rhs) => err!(
+                    "unknown operator {} {} {}",
+                    lhs.type_str(),
+                    op,
+                    rhs.type_str()
+                ),
+            },
             _ => unreachable!(),
         }
     }
@@ -541,5 +514,24 @@ mod tests {
             ctx.eval("fizzbuzz(5)".into()),
             Return(String("buzz".into()))
         );
+    }
+
+    #[test]
+    fn fizzbuzz4() {
+        let code = r#"
+            let fizzbuzz = fn(n) {
+                ""
+                + if(n % 3 == 0){"fizz"}{""}
+                + if(n % 5 == 0){"buzz"}{""}
+            }
+        "#;
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(
+            ctx.eval("fizzbuzz(15)".into()),
+            Val(String("fizzbuzz".into()))
+        );
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
     }
 }
