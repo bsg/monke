@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{rc::Rc, cell::RefCell};
 
 use crate::ast::{FnExpression, NodeRef};
 
@@ -11,8 +11,8 @@ pub enum Value {
     Bool(bool),
     String(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
-    BuiltIn(fn(Vec<Value>) -> EvalResult),
-    Array(Vec<Value>),
+    BuiltIn(fn(&mut Vec<Value>) -> EvalResult),
+    Array(Rc<RefCell<Vec<Value>>>),
 }
 
 impl Value {

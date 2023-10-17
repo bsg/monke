@@ -1,10 +1,11 @@
 // TODO logical and/or should short circuit
+// TODO boi we need some tidying up
 
 mod env;
 mod error;
 mod result;
 
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     ast::{BlockExpression, NodeKind, NodeRef, Op},
@@ -46,7 +47,7 @@ impl Eval {
                     if let String(s) = &args[0] {
                         EvalResult::Return(Int(s.len().try_into().unwrap()))
                     } else if let Array(a) = &args[0] {
-                        EvalResult::Return(Int(a.len().try_into().unwrap()))
+                        EvalResult::Return(Int(a.borrow().len().try_into().unwrap()))
                     } else {
                         err!("len() expected a string argument")
                     }
@@ -76,8 +77,7 @@ impl Eval {
                     if let String(s) = &args[0] {
                         todo!()
                     } else if let Array(ref mut a) = args[0] {
-                        println!("{:?}", a);
-                        a.push(v);
+                        a.borrow_mut().push(v);
                         Val(Nil)
                     } else {
                         err!("len() expected a string argument")
@@ -95,7 +95,7 @@ impl Eval {
                     if let String(s) = &args[0] {
                         todo!()
                     } else if let Array(ref mut a) = args[0].clone() {
-                        match a.pop() {
+                        match a.borrow_mut().pop() {
                             Some(v) => Val(v),
                             None => Val(Nil),
                         }
@@ -183,15 +183,35 @@ impl Eval {
             Some(lhs) => match &lhs.kind {
                 NodeKind::Ident(name) => {
                     match Self::eval_ast(env.clone(), rhs.clone()) {
-                        Val(val) | Return(val) => {
+                        Val(val) => {
                             if is_let {
                                 env.borrow_mut().bind_local(name.clone(), val);
                             } else {
                                 env.borrow_mut().bind(name.clone(), val);
                             }
-                            Val(Nil) // TODO should EvalResult have something like Ok?
+                            Val(Nil) // TODO return without value
                         }
                         Err(_) => todo!(),
+                        _ => todo!(),
+                    }
+                }
+                NodeKind::Index(idx) => {
+                    if let Val(rval) = Self::eval_ast(env.clone(), rhs.clone()) {
+                        let i = match Self::eval_ast(env.clone(), idx.index.clone()) {
+                            Val(Int(i)) => i,
+                            Err(_) => todo!(),
+                            _ => todo!(),
+                        };
+                        match env.borrow().get(idx.ident.clone()) {
+                            Some(Array(arr)) => {
+                                arr.borrow_mut()[i as usize] = rval; // FIXME
+                                Val(Nil)
+                            }
+                            None => todo!(),
+                            _ => todo!(),
+                        }
+                    } else {
+                        todo!()
                     }
                 }
                 _ => todo!(),
@@ -284,7 +304,7 @@ impl Eval {
                                 err @ Err(_) => return err,
                             }
                         }
-                        match f(args) {
+                        match f(&mut args) {
                             Val(rv) | Return(rv) => Val(rv),
                             Err(_) => todo!(),
                         }
@@ -301,7 +321,7 @@ impl Eval {
                             Err(_) => todo!(),
                         }
                     });
-                    Val(Array(arr))
+                    Val(Array(Rc::from(RefCell::new(arr))))
                 }
                 NodeKind::Index(idx) => {
                     let i = match Self::eval_ast(env.clone(), idx.index) {
@@ -309,10 +329,8 @@ impl Eval {
                         Err(_) => todo!(),
                         _ => todo!(),
                     };
-                    println!("idx: {}", i);
-                    println!("{:?}", env);
                     match env.borrow().get(idx.ident) {
-                        Some(Array(arr)) => Val(arr[i as usize].clone()), // FIXME
+                        Some(Array(arr)) => Val(arr.borrow()[i as usize].clone()), // FIXME
                         None => todo!(),
                         _ => todo!(),
                     }
@@ -645,7 +663,11 @@ mod tests {
         "#;
         assert_eq!(
             Eval::new().eval(code.into()),
-            Val(Array(vec!(Int(1), Int(2), Bool(false))))
+            Val(Array(Rc::from(RefCell::new(vec!(
+                Int(1),
+                Int(2),
+                Bool(false)
+            )))))
         );
     }
 
@@ -656,6 +678,16 @@ mod tests {
             a[1]
         "#;
         assert_eq!(Eval::new().eval(code.into()), Val(Int(5)));
+
+        let code = r#"
+            let a = [1, if(false){2}{5}, 3];
+            a[1] = 4;
+            a
+        "#;
+        assert_eq!(
+            Eval::new().eval(code.into()),
+            Val(Array(Rc::from(RefCell::new(vec![Int(1), Int(4), Int(3)]))))
+        );
     }
 
     #[test]
