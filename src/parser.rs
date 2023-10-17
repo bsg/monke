@@ -279,7 +279,7 @@ impl Parser {
 
         loop {
             // ... and these are infix
-            match self.peek_token {
+            let op = match self.peek_token {
                 Some(Token::RParen) => {
                     self.next_token();
                     break;
@@ -288,45 +288,41 @@ impl Parser {
                     self.next_token();
                     break;
                 }
-                _ => {
-                    let op = match self.peek_token {
-                        Some(Token::Assign) => Some(Op::Assign),
-                        Some(Token::Plus) => Some(Op::Add),
-                        Some(Token::Minus) => Some(Op::Sub),
-                        Some(Token::Asterisk) => Some(Op::Mul),
-                        Some(Token::Slash) => Some(Op::Div),
-                        Some(Token::Percent) => Some(Op::Mod),
-                        Some(Token::Eq) => Some(Op::Eq),
-                        Some(Token::NotEq) => Some(Op::NotEq),
-                        Some(Token::Lt) => Some(Op::Lt),
-                        Some(Token::Gt) => Some(Op::Gt),
-                        Some(Token::Le) => Some(Op::Le),
-                        Some(Token::Ge) => Some(Op::Ge),
-                        Some(Token::And) => Some(Op::And),
-                        Some(Token::Or) => Some(Op::Or),
-                        Some(Token::LParen) => Some(Op::Call),
-                        Some(Token::LBracket) => Some(Op::Index),
-                        _ => break,
-                    };
+                Some(Token::Assign) => Some(Op::Assign),
+                Some(Token::Plus) => Some(Op::Add),
+                Some(Token::Minus) => Some(Op::Sub),
+                Some(Token::Asterisk) => Some(Op::Mul),
+                Some(Token::Slash) => Some(Op::Div),
+                Some(Token::Percent) => Some(Op::Mod),
+                Some(Token::Eq) => Some(Op::Eq),
+                Some(Token::NotEq) => Some(Op::NotEq),
+                Some(Token::Lt) => Some(Op::Lt),
+                Some(Token::Gt) => Some(Op::Gt),
+                Some(Token::Le) => Some(Op::Le),
+                Some(Token::Ge) => Some(Op::Ge),
+                Some(Token::And) => Some(Op::And),
+                Some(Token::Or) => Some(Op::Or),
+                Some(Token::LParen) => Some(Op::Call),
+                Some(Token::LBracket) => Some(Op::Index),
+                _ => break,
+            };
 
-                    match op {
-                        Some(Op::Call) => {
-                            lhs = self.parse_call(lhs);
-                        }
-                        Some(Op::Index) => {
-                            lhs = self.parse_index();
-                        }
-                        Some(op) => {
-                            if op.precedence() < precedence {
-                                break;
-                            }
-                            self.next_token();
-                            let rhs = self.parse_expression(op.precedence());
-                            lhs = node!(NodeKind::InfixOp(op), lhs, rhs);
-                        }
-                        None => break,
-                    }
+            match op {
+                Some(Op::Call) => {
+                    lhs = self.parse_call(lhs);
                 }
+                Some(Op::Index) => {
+                    lhs = self.parse_index();
+                }
+                Some(op) => {
+                    if op.precedence() < precedence {
+                        break;
+                    }
+                    self.next_token();
+                    let rhs = self.parse_expression(op.precedence());
+                    lhs = node!(NodeKind::InfixOp(op), lhs, rhs);
+                }
+                None => break,
             }
         }
         lhs
@@ -342,6 +338,22 @@ mod tests {
             let mut parser = Parser::new($input);
             match parser.parse_statement() {
                 Some(ast) => assert_eq!(
+                    format!("{}", ast)
+                        .chars()
+                        .filter(|c| !c.is_ascii_control())
+                        .collect::<String>(),
+                    $expected
+                ),
+                None => panic!(),
+            }
+        };
+    }
+
+    macro_rules! assert_parse_ne {
+        ($input:expr, $expected:expr) => {
+            let mut parser = Parser::new($input);
+            match parser.parse_statement() {
+                Some(ast) => assert_ne!(
                     format!("{}", ast)
                         .chars()
                         .filter(|c| !c.is_ascii_control())
@@ -751,13 +763,16 @@ mod tests {
     }
 
     #[test]
-    fn array() {
+    fn parse_array() {
         assert_parse!("[1, 2, x]", "Array[Int(1), Int(2), Ident(\"x\")]");
+        assert_parse_ne!("[1, 2, x", "Array[Int(1), Int(2), Ident(\"x\")]");
     }
 
     #[test]
-    fn index() {
+    fn parse_index() {
         assert_parse!("arr[2]", "arr[Some(Int(2))]");
+        assert_parse_ne!("arr[2", "arr[Some(Int(2))]");
         assert_parse!("arr[x]", "arr[Some(Ident(\"x\"))]");
+        assert_parse!("arr[x + 2]", "arr[Some(Op(Add)-Ident(\"x\")-Int(2))]");
     }
 }
