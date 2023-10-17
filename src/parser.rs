@@ -65,7 +65,6 @@ impl Parser {
                 assert_eq!(self.curr_token, Some(Token::RParen));
                 self.next_token();
                 let lhs = self.parse_block();
-                //self.next_token();
 
                 // eat 'else' if there is one
                 if let Some(Token::Else) = self.peek_token {
@@ -141,7 +140,9 @@ impl Parser {
             None => todo!(),
         }
 
+        self.next_token();
         while let Some(node) = self.parse_expression(0) {
+            println!("{:?}", node);
             args.push(node.into());
             match self.peek_token {
                 Some(Token::Comma) => self.next_token(),
@@ -269,8 +270,7 @@ impl Parser {
 
                     match op {
                         Some(Op::Call) => {
-                            let tmp = self.parse_call(lhs);
-                            lhs = tmp;
+                            lhs = self.parse_call(lhs);
                         }
                         Some(op) => {
                             if op.precedence() < precedence {
@@ -568,6 +568,16 @@ mod tests {
     }
 
     #[test]
+    fn sequential_blocks() {
+        // NOTE second block should not be parsed since we're parsing a single statement
+        assert_parse!(
+            r#"{"1"}{"2"}"#,
+            "Block\
+            -String(1)"
+        );
+    }
+
+    #[test]
     fn nested_sequential_blocks() {
         assert_parse!(
             "{{1}{2}}",
@@ -656,6 +666,27 @@ mod tests {
             -Then\
             --Block\
             ---Int(2)"
+        );
+    }
+
+    #[test]
+    fn call_precedence() {
+        assert_parse!(
+            "f(1) + f(2)",
+            "Add\
+            -Call f\
+            --Int(1)\
+            -Call f\
+            --Int(2)"
+        );
+    }
+
+    #[test]
+    fn if_precedence() {
+        // TODO
+        assert_parse!(
+            "if(a){1}{2} + if(b){3}{4}",
+            ""
         );
     }
 }

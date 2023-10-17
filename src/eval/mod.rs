@@ -520,9 +520,7 @@ mod tests {
     fn fizzbuzz4() {
         let code = r#"
             let fizzbuzz = fn(n) {
-                ""
-                + if(n % 3 == 0){"fizz"}{""}
-                + if(n % 5 == 0){"buzz"}{""}
+                if(n % 3 == 0){"fizz"}{""} + if(n % 5 == 0){"buzz"}{""}
             }
         "#;
         let ctx = Eval::new();
