@@ -45,6 +45,8 @@ impl Eval {
                 if args.len() == 1 {
                     if let String(s) = &args[0] {
                         EvalResult::Return(Int(s.len().try_into().unwrap()))
+                    } else if let Array(a) = &args[0] {
+                        EvalResult::Return(Int(a.len().try_into().unwrap()))
                     } else {
                         err!("len() expected a string argument")
                     }
@@ -63,6 +65,46 @@ impl Eval {
                     }
                 }
                 EvalResult::Return(Nil)
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "push".into(),
+            Value::BuiltIn(|mut args| {
+                if args.len() == 2 {
+                    let v = args[1].clone();
+                    if let String(s) = &args[0] {
+                        todo!()
+                    } else if let Array(ref mut a) = args[0] {
+                        println!("{:?}", a);
+                        a.push(v);
+                        Val(Nil)
+                    } else {
+                        err!("len() expected a string argument")
+                    }
+                } else {
+                    err!("len() expected one argument")
+                }
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "pop".into(),
+            Value::BuiltIn(|args| {
+                if args.len() == 1 {
+                    if let String(s) = &args[0] {
+                        todo!()
+                    } else if let Array(ref mut a) = args[0].clone() {
+                        match a.pop() {
+                            Some(v) => Val(v),
+                            None => Val(Nil),
+                        }
+                    } else {
+                        err!("len() expected a string argument")
+                    }
+                } else {
+                    err!("len() expected one argument")
+                }
             }),
         );
 
@@ -229,7 +271,10 @@ impl Eval {
                                 err @ Err(_) => return err,
                             }
                         }
-                        Self::eval_ast(fnenv, ast)
+                        match Self::eval_ast(fnenv, ast) {
+                            Val(rv) | Return(rv) => Val(rv),
+                            Err(_) => todo!(),
+                        }
                     }
                     Some(BuiltIn(f)) => {
                         let mut args: Vec<Value> = Vec::new();
@@ -239,7 +284,10 @@ impl Eval {
                                 err @ Err(_) => return err,
                             }
                         }
-                        f(args)
+                        match f(args) {
+                            Val(rv) | Return(rv) => Val(rv),
+                            Err(_) => todo!(),
+                        }
                     }
                     _ => todo!(),
                 },
@@ -513,16 +561,10 @@ mod tests {
         ctx.eval(code.into());
         assert_eq!(
             ctx.eval("fizzbuzz(15)".into()),
-            Return(String("fizzbuzz".into()))
+            Val(String("fizzbuzz".into()))
         );
-        assert_eq!(
-            ctx.eval("fizzbuzz(3)".into()),
-            Return(String("fizz".into()))
-        );
-        assert_eq!(
-            ctx.eval("fizzbuzz(5)".into()),
-            Return(String("buzz".into()))
-        );
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
     }
 
     #[test]
@@ -544,16 +586,10 @@ mod tests {
         ctx.eval(code.into());
         assert_eq!(
             ctx.eval("fizzbuzz(15)".into()),
-            Return(String("fizzbuzz".into()))
+            Val(String("fizzbuzz".into()))
         );
-        assert_eq!(
-            ctx.eval("fizzbuzz(3)".into()),
-            Return(String("fizz".into()))
-        );
-        assert_eq!(
-            ctx.eval("fizzbuzz(5)".into()),
-            Return(String("buzz".into()))
-        );
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
     }
 
     #[test]
@@ -574,16 +610,10 @@ mod tests {
         ctx.eval(code.into());
         assert_eq!(
             ctx.eval("fizzbuzz(15)".into()),
-            Return(String("fizzbuzz".into()))
+            Val(String("fizzbuzz".into()))
         );
-        assert_eq!(
-            ctx.eval("fizzbuzz(3)".into()),
-            Return(String("fizz".into()))
-        );
-        assert_eq!(
-            ctx.eval("fizzbuzz(5)".into()),
-            Return(String("buzz".into()))
-        );
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
     }
 
     #[test]
@@ -605,7 +635,7 @@ mod tests {
 
     #[test]
     fn builtin_len() {
-        assert_eq!(Eval::new().eval(r#"len("asdfg")"#.into()), Return(Int(5)));
+        assert_eq!(Eval::new().eval(r#"len("asdfg")"#.into()), Val(Int(5)));
     }
 
     #[test]
@@ -626,5 +656,29 @@ mod tests {
             a[1]
         "#;
         assert_eq!(Eval::new().eval(code.into()), Val(Int(5)));
+    }
+
+    #[test]
+    fn array_len() {
+        // FIXME this shouldn't work wtf
+        let code = r#"
+            let a = [1, 2, 3, 4;
+            len(a)
+        "#;
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(4)));
+    }
+
+    #[test]
+    fn array_push_pop() {
+        let code = r#"
+            let a = [1, 2, 3, 4];
+        "#;
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(ctx.eval("len(a)".into()), Val(Int(4)));
+        ctx.eval("push(a, 5)".into());
+        assert_eq!(ctx.eval("len(a)".into()), Val(Int(5)));
+        assert_eq!(ctx.eval("pop(a)".into()), Val(Int(5)));
+        assert_eq!(ctx.eval("len(a)".into()), Val(Int(4)));
     }
 }
