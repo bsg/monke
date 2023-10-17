@@ -71,16 +71,14 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "push".into(),
-            Value::BuiltIn(|mut args| {
+            Value::BuiltIn(|args| {
                 if args.len() == 2 {
                     let v = args[1].clone();
-                    if let String(s) = &args[0] {
-                        todo!()
-                    } else if let Array(ref mut a) = args[0] {
+                    if let Array(ref mut a) = args[0] {
                         a.borrow_mut().push(v);
                         Val(Nil)
                     } else {
-                        err!("len() expected a string argument")
+                        err!("len() expected an array argument")
                     }
                 } else {
                     err!("len() expected one argument")
@@ -92,15 +90,67 @@ impl Eval {
             "pop".into(),
             Value::BuiltIn(|args| {
                 if args.len() == 1 {
-                    if let String(s) = &args[0] {
-                        todo!()
-                    } else if let Array(ref mut a) = args[0].clone() {
+                    if let Array(ref mut a) = args[0].clone() {
                         match a.borrow_mut().pop() {
                             Some(v) => Val(v),
                             None => Val(Nil),
                         }
                     } else {
-                        err!("len() expected a string argument")
+                        err!("len() expected an array argument")
+                    }
+                } else {
+                    err!("len() expected one argument")
+                }
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "first".into(),
+            Value::BuiltIn(|args| {
+                if args.len() == 1 {
+                    if let Array(ref mut a) = args[0].clone() {
+                        match a.borrow_mut().first() {
+                            Some(v) => Val(v.clone()),
+                            None => Val(Nil),
+                        }
+                    } else {
+                        err!("len() expected an array argument")
+                    }
+                } else {
+                    err!("len() expected one argument")
+                }
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "last".into(),
+            Value::BuiltIn(|args| {
+                if args.len() == 1 {
+                    if let Array(ref mut a) = args[0].clone() {
+                        match a.borrow_mut().last() {
+                            Some(v) => Val(v.clone()),
+                            None => Val(Nil),
+                        }
+                    } else {
+                        err!("len() expected an array argument")
+                    }
+                } else {
+                    err!("len() expected one argument")
+                }
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "tail".into(),
+            Value::BuiltIn(|args| {
+                if args.len() == 1 {
+                    if let Array(ref mut a) = args[0].clone() {
+                        match a.borrow_mut().split_first() {
+                            Some((_, tail)) => Val(Array(Rc::from(RefCell::new(tail.to_vec())))),
+                            None => Val(Nil),
+                        }
+                    } else {
+                        err!("len() expected an array argument")
                     }
                 } else {
                     err!("len() expected one argument")
@@ -712,5 +762,20 @@ mod tests {
         assert_eq!(ctx.eval("len(a)".into()), Val(Int(5)));
         assert_eq!(ctx.eval("pop(a)".into()), Val(Int(5)));
         assert_eq!(ctx.eval("len(a)".into()), Val(Int(4)));
+    }
+
+    #[test]
+    fn array_first_last_tail() {
+        let code = r#"
+            let a = [1, 2, 3, 4];
+        "#;
+        let ctx = Eval::new();
+        ctx.eval(code.into());
+        assert_eq!(ctx.eval("first(a)".into()), Val(Int(1)));
+        assert_eq!(ctx.eval("last(a)".into()), Val(Int(4)));
+        assert_eq!(
+            ctx.eval("tail(a)".into()),
+            Val(Array(Rc::from(RefCell::new(vec![Int(2), Int(3), Int(4)]))))
+        );
     }
 }
