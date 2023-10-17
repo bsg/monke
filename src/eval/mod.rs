@@ -78,10 +78,10 @@ impl Eval {
                         a.borrow_mut().push(v);
                         Val(Nil)
                     } else {
-                        err!("len() expected an array argument")
+                        err!("push() expected an array argument")
                     }
                 } else {
-                    err!("len() expected one argument")
+                    err!("push() expected one argument")
                 }
             }),
         );
@@ -96,10 +96,10 @@ impl Eval {
                             None => Val(Nil),
                         }
                     } else {
-                        err!("len() expected an array argument")
+                        err!("pop() expected an array argument")
                     }
                 } else {
-                    err!("len() expected one argument")
+                    err!("pop() expected one argument")
                 }
             }),
         );
@@ -114,10 +114,10 @@ impl Eval {
                             None => Val(Nil),
                         }
                     } else {
-                        err!("len() expected an array argument")
+                        err!("first() expected an array argument")
                     }
                 } else {
-                    err!("len() expected one argument")
+                    err!("first() expected one argument")
                 }
             }),
         );
@@ -132,10 +132,10 @@ impl Eval {
                             None => Val(Nil),
                         }
                     } else {
-                        err!("len() expected an array argument")
+                        err!("last() expected an array argument")
                     }
                 } else {
-                    err!("len() expected one argument")
+                    err!("last() expected one argument")
                 }
             }),
         );
@@ -150,10 +150,10 @@ impl Eval {
                             None => Val(Nil),
                         }
                     } else {
-                        err!("len() expected an array argument")
+                        err!("tail() expected an array argument")
                     }
                 } else {
-                    err!("len() expected one argument")
+                    err!("tail() expected one argument")
                 }
             }),
         );
