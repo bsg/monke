@@ -172,6 +172,28 @@ impl Parser {
         node!(NodeKind::Array(arr), None, None)
     }
 
+    fn parse_index(&mut self) -> NodeRef {
+        let ident;
+
+        match self.parse_ident() {
+            Some(node) => match &node.kind {
+                NodeKind::Ident(id) => ident = id.clone(),
+                _ => todo!(),
+            },
+            None => todo!(),
+        }
+        self.next_token();
+
+        node!(
+            NodeKind::Index(IndexExpression {
+                ident,
+                index: self.parse_expression(0)
+            }),
+            None,
+            None
+        )
+    }
+
     pub fn parse_statement(&mut self) -> NodeRef {
         let node = match self.tokens.peek() {
             Some(Token::Let) => {
@@ -262,6 +284,10 @@ impl Parser {
                     self.next_token();
                     break;
                 }
+                Some(Token::RBracket) => {
+                    self.next_token();
+                    break;
+                }
                 _ => {
                     let op = match self.peek_token {
                         Some(Token::Assign) => Some(Op::Assign),
@@ -279,12 +305,16 @@ impl Parser {
                         Some(Token::And) => Some(Op::And),
                         Some(Token::Or) => Some(Op::Or),
                         Some(Token::LParen) => Some(Op::Call),
+                        Some(Token::LBracket) => Some(Op::Index),
                         _ => break,
                     };
 
                     match op {
                         Some(Op::Call) => {
                             lhs = self.parse_call(lhs);
+                        }
+                        Some(Op::Index) => {
+                            lhs = self.parse_index();
                         }
                         Some(op) => {
                             if op.precedence() < precedence {
@@ -723,5 +753,11 @@ mod tests {
     #[test]
     fn array() {
         assert_parse!("[1, 2, x]", "Array[Int(1), Int(2), Ident(\"x\")]");
+    }
+
+    #[test]
+    fn index() {
+        assert_parse!("arr[2]", "arr[Some(Int(2))]");
+        assert_parse!("arr[x]", "arr[Some(Ident(\"x\"))]");
     }
 }

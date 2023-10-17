@@ -255,6 +255,20 @@ impl Eval {
                     });
                     Val(Array(arr))
                 }
+                NodeKind::Index(idx) => {
+                    let i = match Self::eval_ast(env.clone(), idx.index) {
+                        Val(Int(i)) | Return(Int(i)) => i,
+                        Err(_) => todo!(),
+                        _ => todo!(),
+                    };
+                    println!("idx: {}", i);
+                    println!("{:?}", env);
+                    match env.borrow().get(idx.ident) {
+                        Some(Array(arr)) => Val(arr[i as usize].clone()), // FIXME
+                        None => todo!(),
+                        _ => todo!(),
+                    }
+                }
             },
             None => Val(Nil),
         }
@@ -265,9 +279,9 @@ impl Eval {
         let mut parser = Parser::new(&code);
 
         loop {
-            let ast = parser.parse_statement();
-            if ast.is_some() {
-                last_result = Self::eval_ast(self.env.clone(), ast);
+            let node = parser.parse_statement();
+            if node.is_some() {
+                last_result = Self::eval_ast(self.env.clone(), node);
             } else {
                 break;
             }
@@ -603,5 +617,14 @@ mod tests {
             Eval::new().eval(code.into()),
             Val(Array(vec!(Int(1), Int(2), Bool(false))))
         );
+    }
+
+    #[test]
+    fn eval_index() {
+        let code = r#"
+            let a = [1, if(false){2}{5}, 3];
+            a[1]
+        "#;
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(5)));
     }
 }

@@ -19,6 +19,7 @@ pub enum Op {
     And,
     Or,
     Call,
+    Index,
 }
 
 impl std::fmt::Display for Op {
@@ -41,6 +42,7 @@ impl std::fmt::Display for Op {
             Op::And => f.write_str("&&"),
             Op::Or => f.write_str("||"),
             Op::Call => f.write_str(""),
+            Op::Index => f.write_str(""),
         }
     }
 }
@@ -86,6 +88,12 @@ pub struct CallExpression {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct IndexExpression {
+    pub ident: Rc<str>,
+    pub index: NodeRef,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum NodeKind {
     Ident(Rc<str>),
     Int(i64),
@@ -99,7 +107,8 @@ pub enum NodeKind {
     Block(BlockExpression),
     Fn(FnExpression),
     Call(CallExpression),
-    Array(Vec<Rc<Node>>)
+    Array(Vec<Rc<Node>>),
+    Index(IndexExpression),
 }
 
 #[derive(Clone, PartialEq)]
@@ -125,6 +134,7 @@ impl fmt::Debug for NodeKind {
             Self::Fn(arg0) => write!(f, "Fn({:?})", arg0),
             Self::Call(arg0) => write!(f, "Call(\n{:?})", arg0),
             Self::Array(arg0) => write!(f, "Array{:?}", arg0),
+            Self::Index(arg0) => write!(f, "{:?}", arg0),
         }
     }
 }
@@ -156,6 +166,7 @@ impl fmt::Display for Node {
                     NodeKind::Block(_) => "Block\n".to_string(),
                     NodeKind::Call(_) => "Call ".to_string(),
                     NodeKind::Array(a) => format!("Array{:?}\n", a),
+                    NodeKind::Index(idx) => format!("{:?}\n", idx),
                 }
             ))?;
             match &node.kind {
@@ -258,5 +269,11 @@ impl fmt::Debug for FnExpression {
 impl fmt::Debug for CallExpression {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_fmt(format_args!("{:?})", self.args))
+    }
+}
+
+impl fmt::Debug for IndexExpression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}[{:?}]", self.ident, self.index))
     }
 }
