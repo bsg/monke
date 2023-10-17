@@ -99,6 +99,7 @@ pub enum NodeKind {
     Block(BlockExpression),
     Fn(FnExpression),
     Call(CallExpression),
+    Array(Vec<Rc<Node>>)
 }
 
 #[derive(Clone, PartialEq)]
@@ -123,6 +124,7 @@ impl fmt::Debug for NodeKind {
             Self::Block(arg0) => f.debug_tuple("Block").field(arg0).finish(),
             Self::Fn(arg0) => write!(f, "Fn({:?})", arg0),
             Self::Call(arg0) => write!(f, "Call(\n{:?})", arg0),
+            Self::Array(arg0) => write!(f, "Array{:?}", arg0),
         }
     }
 }
@@ -153,6 +155,7 @@ impl fmt::Display for Node {
                     NodeKind::Fn(args) => format!("Fn({})\n", args),
                     NodeKind::Block(_) => "Block\n".to_string(),
                     NodeKind::Call(_) => "Call ".to_string(),
+                    NodeKind::Array(a) => format!("Array{:?}\n", a),
                 }
             ))?;
             match &node.kind {

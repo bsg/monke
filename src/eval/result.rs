@@ -12,6 +12,7 @@ pub enum Value {
     String(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
     BuiltIn(fn(Vec<Value>) -> EvalResult),
+    Array(Vec<Value>),
 }
 
 impl Value {
@@ -23,6 +24,7 @@ impl Value {
             Value::String(_) => "String",
             Value::Fn(..) => "Fn",
             Value::BuiltIn(..) => "Fn",
+            Value::Array(_) => "Array",
         }
     }
 }
@@ -36,6 +38,7 @@ impl std::fmt::Display for Value {
             Value::String(val) => f.write_fmt(format_args!("{}", val)),
             Value::Fn(..) => f.write_str("fn"),
             Value::BuiltIn(..) => f.write_str("builtin"),
+            Value::Array(arr) => f.write_fmt(format_args!("Array{:?}", arr)),
         }
     }
 }

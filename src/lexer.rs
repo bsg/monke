@@ -34,6 +34,8 @@ pub enum Token {
     RParen,
     LBrace,
     RBrace,
+    LBracket,
+    RBracket,
 
     // Keywords
     Fn,
@@ -119,7 +121,7 @@ impl Tokens {
             self.read_char();
         }
 
-        Rc::from(self.input[pos_start+1..self.position].to_string())
+        Rc::from(self.input[pos_start + 1..self.position].to_string())
     }
 
     fn next_token(&mut self) -> Token {
@@ -176,6 +178,8 @@ impl Tokens {
             Some(b')') => Token::RParen,
             Some(b'{') => Token::LBrace,
             Some(b'}') => Token::RBrace,
+            Some(b'[') => Token::LBracket,
+            Some(b']') => Token::RBracket,
             Some(b',') => Token::Comma,
             Some(b';') => Token::Semicolon,
             Some(b'"') => Token::String(self.read_string()),
@@ -246,10 +250,10 @@ mod tests {
 
     #[test]
     fn symbols() {
-        let source = "=+-!*/(){},;";
+        let source = "=+-!*/(){}[],;";
         let expected = [
-            Assign, Plus, Minus, Bang, Asterisk, Slash, LParen, RParen, LBrace, RBrace, Comma,
-            Semicolon,
+            Assign, Plus, Minus, Bang, Asterisk, Slash, LParen, RParen, LBrace, RBrace, LBracket,
+            RBracket, Comma, Semicolon,
         ];
         let mut tokens = Lexer::new(source).tokens();
         expected
@@ -271,9 +275,7 @@ mod tests {
 
     #[test]
     fn string() {
-        let expected = [
-            LBrace, String("some string".into()), RBrace
-        ];
+        let expected = [LBrace, String("some string".into()), RBrace];
         let mut tokens = Lexer::new(r#"{"some string"}"#).tokens();
         expected
             .iter()

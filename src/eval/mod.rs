@@ -26,6 +26,7 @@ use EvalResult::Err;
 use EvalResult::Return;
 use EvalResult::Val;
 
+use Value::Array;
 use Value::Bool;
 use Value::BuiltIn;
 use Value::Fn;
@@ -242,6 +243,18 @@ impl Eval {
                     }
                     _ => todo!(),
                 },
+                NodeKind::Array(nodes) => {
+                    let mut arr: Vec<Value> = Vec::new();
+                    nodes.iter().for_each(|node| {
+                        match Self::eval_ast(env.clone(), Some(node.clone())) {
+                            Val(value) | Return(value) => {
+                                arr.push(value);
+                            }
+                            Err(_) => todo!(),
+                        }
+                    });
+                    Val(Array(arr))
+                }
             },
             None => Val(Nil),
         }
@@ -579,5 +592,16 @@ mod tests {
     #[test]
     fn builtin_len() {
         assert_eq!(Eval::new().eval(r#"len("asdfg")"#.into()), Return(Int(5)));
+    }
+
+    #[test]
+    fn eval_array() {
+        let code = r#"
+            [1, 2, false]
+        "#;
+        assert_eq!(
+            Eval::new().eval(code.into()),
+            Val(Array(vec!(Int(1), Int(2), Bool(false))))
+        );
     }
 }

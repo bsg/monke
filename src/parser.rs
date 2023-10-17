@@ -159,6 +159,19 @@ impl Parser {
         )
     }
 
+    fn parse_array(&mut self) -> NodeRef {
+        let mut arr: Vec<Rc<Node>> = Vec::new();
+        while let Some(node) = self.parse_expression(0) {
+            arr.push(node.clone());
+            match self.peek_token {
+                Some(Token::Comma) => self.next_token(),
+                _ => break,
+            }
+        }
+
+        node!(NodeKind::Array(arr), None, None)
+    }
+
     pub fn parse_statement(&mut self) -> NodeRef {
         let node = match self.tokens.peek() {
             Some(Token::Let) => {
@@ -231,6 +244,8 @@ impl Parser {
             Some(Token::Let) => self.parse_statement(),
             // LPAREN
             Some(Token::LParen) => self.parse_expression(0),
+            // ARRAY
+            Some(Token::LBracket) => self.parse_array(),
             // BLOCK
             Some(Token::LBrace) => self.parse_block(),
             // FUNCTION
@@ -683,7 +698,8 @@ mod tests {
     #[test]
     fn if_precedence() {
         // TODO
-        assert_parse!("if(a){1}{2} + if(b){3}{4}",
+        assert_parse!(
+            "if(a){1}{2} + if(b){3}{4}",
             "Add\
             -If\
             --Ident(a)\
@@ -700,6 +716,12 @@ mod tests {
             ---Int(3)\
             -Else\
             --Block\
-            ---Int(4)");
+            ---Int(4)"
+        );
+    }
+
+    #[test]
+    fn array() {
+        assert_parse!("[1, 2, x]", "Array[Int(1), Int(2), Ident(\"x\")]");
     }
 }
