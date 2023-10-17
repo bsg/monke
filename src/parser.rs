@@ -238,7 +238,7 @@ impl Parser {
             Some(Token::Fn) => self.parse_fn(),
             // IF
             Some(Token::If) => self.parse_if(),
-            _ => None,
+            _ => return None,
         };
 
         loop {
@@ -684,9 +684,23 @@ mod tests {
     #[test]
     fn if_precedence() {
         // TODO
-        assert_parse!(
-            "if(a){1}{2} + if(b){3}{4}",
-            ""
-        );
+        assert_parse!("if(a){1}{2} + if(b){3}{4}",
+            "Add\
+            -If\
+            --Ident(a)\
+            -Then\
+            --Block\
+            ---Int(1)\
+            -Else\
+            --Block\
+            ---Int(2)\
+            -If\
+            --Ident(b)\
+            -Then\
+            --Block\
+            ---Int(3)\
+            -Else\
+            --Block\
+            ---Int(4)");
     }
 }
