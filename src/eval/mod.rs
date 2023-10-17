@@ -27,6 +27,7 @@ use EvalResult::Return;
 use EvalResult::Val;
 
 use Value::Bool;
+use Value::BuiltIn;
 use Value::Fn;
 use Value::Int;
 use Value::Nil;
@@ -34,7 +35,39 @@ use Value::String;
 
 impl Eval {
     pub fn new() -> Eval {
-        Eval { env: Env::new() }
+        // TODO construct this somewhere else
+        let builtins = Env::new();
+
+        builtins.borrow_mut().bind_local(
+            "len".into(),
+            Value::BuiltIn(|args| {
+                if args.len() == 1 {
+                    if let String(s) = &args[0] {
+                        EvalResult::Return(Int(s.len().try_into().unwrap()))
+                    } else {
+                        err!("len() expected a string argument")
+                    }
+                } else {
+                    err!("len() expected one argument")
+                }
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "puts".into(),
+            Value::BuiltIn(|args| {
+                if args.len() == 1 {
+                    if let String(s) = &args[0] {
+                        print!("{}", s);
+                    }
+                }
+                EvalResult::Return(Nil)
+            }),
+        );
+
+        Eval {
+            env: Env::from(builtins),
+        }
     }
 
     fn eval_infix(op: &Op, lhs: EvalResult, rhs: EvalResult) -> EvalResult {
@@ -196,6 +229,16 @@ impl Eval {
                             }
                         }
                         Self::eval_ast(fnenv, ast)
+                    }
+                    Some(BuiltIn(f)) => {
+                        let mut args: Vec<Value> = Vec::new();
+                        for arg in call.args.iter() {
+                            match Self::eval_ast(env.clone(), arg.clone()) {
+                                Val(val) | Return(val) => args.push(val),
+                                err @ Err(_) => return err,
+                            }
+                        }
+                        f(args)
                     }
                     _ => todo!(),
                 },
@@ -531,5 +574,10 @@ mod tests {
         );
         assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
         assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
+    }
+
+    #[test]
+    fn builtin_len() {
+        assert_eq!(Eval::new().eval(r#"len("asdfg")"#.into()), Return(Int(5)));
     }
 }

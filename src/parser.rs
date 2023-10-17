@@ -142,7 +142,6 @@ impl Parser {
 
         self.next_token();
         while let Some(node) = self.parse_expression(0) {
-            println!("{:?}", node);
             args.push(node.into());
             match self.peek_token {
                 Some(Token::Comma) => self.next_token(),

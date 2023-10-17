@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::ast::{FnExpression, NodeRef};
 
-use super::{error::Error, env::EnvRef};
+use super::{env::EnvRef, error::Error};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
@@ -11,6 +11,7 @@ pub enum Value {
     Bool(bool),
     String(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
+    BuiltIn(fn(Vec<Value>) -> EvalResult),
 }
 
 impl Value {
@@ -21,6 +22,7 @@ impl Value {
             Value::Bool(_) => "Bool",
             Value::String(_) => "String",
             Value::Fn(..) => "Fn",
+            Value::BuiltIn(..) => "Fn",
         }
     }
 }
@@ -33,6 +35,7 @@ impl std::fmt::Display for Value {
             Value::Bool(val) => f.write_fmt(format_args!("{}", val)),
             Value::String(val) => f.write_fmt(format_args!("{}", val)),
             Value::Fn(..) => f.write_str("fn"),
+            Value::BuiltIn(..) => f.write_str("builtin"),
         }
     }
 }
