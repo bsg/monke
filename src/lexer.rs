@@ -118,9 +118,8 @@ impl Tokens {
         while self.ch != Some(b'"') {
             self.read_char();
         }
-        self.read_char();
 
-        Rc::from(self.input[pos_start+1..self.position-1].to_string())
+        Rc::from(self.input[pos_start+1..self.position].to_string())
     }
 
     fn next_token(&mut self) -> Token {
@@ -272,7 +271,13 @@ mod tests {
 
     #[test]
     fn string() {
-        assert_eq!(Lexer::new(r#""some string""#).tokens().next_token(), String("some string".into()));
+        let expected = [
+            LBrace, String("some string".into()), RBrace
+        ];
+        let mut tokens = Lexer::new(r#"{"some string"}"#).tokens();
+        expected
+            .iter()
+            .for_each(|t| assert_eq!(tokens.next_token(), *t));
     }
 
     #[test]
