@@ -178,7 +178,7 @@ impl Parser {
 
         let mut arr: Vec<Rc<Node>> = Vec::new();
 
-        if (self.peek_token != Some(Token::RBracket)) {
+        if self.peek_token != Some(Token::RBracket) {
             while let Some(node) = self.parse_expression(0) {
                 arr.push(node.clone());
                 match self.peek_token {
