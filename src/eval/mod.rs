@@ -37,8 +37,7 @@ use Value::String;
 
 impl Eval {
     pub fn new() -> Eval {
-        // TODO construct this somewhere else
-        let builtins = Env::new();
+        let builtins = Env::new(); // TODO construct this somewhere else
 
         builtins.borrow_mut().bind_local(
             "len".into(),
@@ -380,7 +379,7 @@ impl Eval {
                         _ => todo!(),
                     };
                     match env.borrow().get(idx.ident) {
-                        Some(Array(arr)) => Val(arr.borrow()[i as usize].clone()), // FIXME
+                        Some(Array(arr)) => Val(arr.borrow()[i as usize].clone()),
                         None => todo!(),
                         _ => todo!(),
                     }
@@ -702,7 +701,7 @@ mod tests {
     }
 
     #[test]
-    fn builtin_len() {
+    fn string_len() {
         assert_eq!(Eval::new().eval(r#"len("asdfg")"#.into()), Val(Int(5)));
     }
 
@@ -725,9 +724,9 @@ mod tests {
     fn eval_index() {
         let code = r#"
             let a = [1, if(false){2}{5}, 3];
-            a[1]
+            a[0] + a[1]
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(5)));
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(6)));
 
         let code = r#"
             let a = [1, if(false){2}{5}, 3];
@@ -742,9 +741,8 @@ mod tests {
 
     #[test]
     fn array_len() {
-        // FIXME this shouldn't work wtf
         let code = r#"
-            let a = [1, 2, 3, 4;
+            let a = [1, 2, 3 ,4];
             len(a)
         "#;
         assert_eq!(Eval::new().eval(code.into()), Val(Int(4)));

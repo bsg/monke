@@ -60,9 +60,15 @@ impl Parser {
     /// caller must ensure current token is If
     fn parse_if(&mut self) -> NodeRef {
         assert_eq!(self.curr_token, Some(Token::If));
+        assert_eq!(self.peek_token, Some(Token::LParen));
+        self.next_token();
+
         match self.parse_expression(0) {
             Some(cond) => {
-                assert_eq!(self.curr_token, Some(Token::RParen));
+                assert_eq!(self.peek_token, Some(Token::RParen));
+                self.next_token();
+
+                assert_eq!(self.peek_token, Some(Token::LBrace));
                 self.next_token();
                 let lhs = self.parse_block();
 
@@ -130,6 +136,7 @@ impl Parser {
 
     fn parse_call(&mut self, rhs: NodeRef) -> NodeRef {
         let mut args: Vec<NodeRef> = Vec::new();
+        // TODO ident is already parsed in parse_expression, use it
         let ident;
 
         match self.parse_ident() {
@@ -141,13 +148,20 @@ impl Parser {
         }
 
         self.next_token();
-        while let Some(node) = self.parse_expression(0) {
-            args.push(node.into());
-            match self.peek_token {
-                Some(Token::Comma) => self.next_token(),
-                _ => break,
+        if self.peek_token != Some(Token::RParen) {
+            while let Some(node) = self.parse_expression(0) {
+                args.push(node.into());
+                match self.peek_token {
+                    Some(Token::Comma) => {
+                        self.next_token();
+                    }
+                    _ => break,
+                }
             }
         }
+
+        assert_eq!(self.peek_token, Some(Token::RParen));
+        self.next_token();
 
         node!(
             NodeKind::Call(CallExpression {
@@ -160,20 +174,30 @@ impl Parser {
     }
 
     fn parse_array(&mut self) -> NodeRef {
+        assert_eq!(self.curr_token, Some(Token::LBracket));
+
         let mut arr: Vec<Rc<Node>> = Vec::new();
-        while let Some(node) = self.parse_expression(0) {
-            arr.push(node.clone());
-            match self.peek_token {
-                Some(Token::Comma) => self.next_token(),
-                _ => break,
+
+        if (self.peek_token != Some(Token::RBracket)) {
+            while let Some(node) = self.parse_expression(0) {
+                arr.push(node.clone());
+                match self.peek_token {
+                    Some(Token::Comma) => self.next_token(),
+                    _ => break,
+                }
             }
         }
+        assert_eq!(self.peek_token, Some(Token::RBracket));
+        self.next_token();
 
         node!(NodeKind::Array(arr), None, None)
     }
 
     fn parse_index(&mut self) -> NodeRef {
+        // TODO ident is already parsed in parse_expression, use it
         let ident;
+
+        assert_eq!(self.peek_token, Some(Token::LBracket));
 
         match self.parse_ident() {
             Some(node) => match &node.kind {
@@ -184,11 +208,12 @@ impl Parser {
         }
         self.next_token();
 
+        let index = self.parse_expression(0);
+        assert_eq!(self.peek_token, Some(Token::RBracket));
+        self.next_token();
+
         node!(
-            NodeKind::Index(IndexExpression {
-                ident,
-                index: self.parse_expression(0)
-            }),
+            NodeKind::Index(IndexExpression { ident, index }),
             None,
             None
         )
@@ -265,7 +290,12 @@ impl Parser {
             // LET
             Some(Token::Let) => self.parse_statement(),
             // LPAREN
-            Some(Token::LParen) => self.parse_expression(0),
+            Some(Token::LParen) => {
+                let expr = self.parse_expression(0);
+                assert_eq!(self.peek_token, Some(Token::RParen));
+                self.next_token();
+                expr
+            }
             // ARRAY
             Some(Token::LBracket) => self.parse_array(),
             // BLOCK
@@ -280,14 +310,6 @@ impl Parser {
         loop {
             // ... and these are infix
             let op = match self.peek_token {
-                Some(Token::RParen) => {
-                    self.next_token();
-                    break;
-                }
-                Some(Token::RBracket) => {
-                    self.next_token();
-                    break;
-                }
                 Some(Token::Assign) => Some(Op::Assign),
                 Some(Token::Plus) => Some(Op::Add),
                 Some(Token::Minus) => Some(Op::Sub),
@@ -338,22 +360,6 @@ mod tests {
             let mut parser = Parser::new($input);
             match parser.parse_statement() {
                 Some(ast) => assert_eq!(
-                    format!("{}", ast)
-                        .chars()
-                        .filter(|c| !c.is_ascii_control())
-                        .collect::<String>(),
-                    $expected
-                ),
-                None => panic!(),
-            }
-        };
-    }
-
-    macro_rules! assert_parse_ne {
-        ($input:expr, $expected:expr) => {
-            let mut parser = Parser::new($input);
-            match parser.parse_statement() {
-                Some(ast) => assert_ne!(
                     format!("{}", ast)
                         .chars()
                         .filter(|c| !c.is_ascii_control())
@@ -764,15 +770,32 @@ mod tests {
 
     #[test]
     fn parse_array() {
+        assert_parse!("[]", "Array[]");
         assert_parse!("[1, 2, x]", "Array[Int(1), Int(2), Ident(\"x\")]");
-        assert_parse_ne!("[1, 2, x", "Array[Int(1), Int(2), Ident(\"x\")]");
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_invalid_array() {
+        assert_parse!("[1, 2, x", "");
     }
 
     #[test]
     fn parse_index() {
         assert_parse!("arr[2]", "arr[Some(Int(2))]");
-        assert_parse_ne!("arr[2", "arr[Some(Int(2))]");
         assert_parse!("arr[x]", "arr[Some(Ident(\"x\"))]");
         assert_parse!("arr[x + 2]", "arr[Some(Op(Add)-Ident(\"x\")-Int(2))]");
+        assert_parse!(
+            "arr[1] + arr[2]",
+            "Add\
+            -arr[Some(Int(1))]\
+            -arr[Some(Int(2))]"
+        );
+    }
+
+    #[test]
+    #[should_panic]
+    fn parse_invalid_index() {
+        assert_parse!("arr[2", "");
     }
 }

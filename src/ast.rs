@@ -90,7 +90,7 @@ pub struct CallExpression {
 #[derive(Clone, PartialEq)]
 pub struct IndexExpression {
     pub ident: Rc<str>,
-    pub index: NodeRef,
+    pub index: NodeRef, // TODO This is not optional. Also refactor NodeRef to not use Option maybe?
 }
 
 #[derive(Clone, PartialEq)]
