@@ -9,7 +9,7 @@ mod result;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{BlockExpression, FnExpression, NodeKind, NodeRef, Op, RangeExpression},
+    ast::{BlockExpression, CallExpression, FnExpression, NodeKind, NodeRef, Op, RangeExpression},
     err,
     parser::Parser,
 };
@@ -66,7 +66,8 @@ impl Eval {
         }
     }
 
-    fn eval_infix(op: &Op, lhs: EvalResult, rhs: EvalResult) -> EvalResult {
+    #[inline(always)]
+    fn eval_infix(op: &Op, lhs: &EvalResult, rhs: &EvalResult) -> EvalResult {
         match (lhs, rhs) {
             (Val(lhs) | Return(lhs), Val(rhs) | Return(rhs)) => match (op, lhs, rhs) {
                 (Op::Assign, ..) => unreachable!(),
@@ -81,8 +82,8 @@ impl Eval {
                 (Op::Gt, Int(a), Int(b)) => Val(Bool(a > b)),
                 (Op::Le, Int(a), Int(b)) => Val(Bool(a <= b)),
                 (Op::Ge, Int(a), Int(b)) => Val(Bool(a >= b)),
-                (Op::And, Bool(a), Bool(b)) => Val(Bool(a && b)),
-                (Op::Or, Bool(a), Bool(b)) => Val(Bool(a || b)),
+                (Op::And, Bool(a), Bool(b)) => Val(Bool(*a && *b)),
+                (Op::Or, Bool(a), Bool(b)) => Val(Bool(*a || *b)),
                 (Op::Add, Str(a), Str(b)) => {
                     let mut s = a.to_string();
                     s.push_str(&b);
@@ -99,7 +100,8 @@ impl Eval {
         }
     }
 
-    fn eval_prefix(op: &Op, rhs: Value) -> EvalResult {
+    #[inline(always)]
+    fn eval_prefix(op: &Op, rhs: &Value) -> EvalResult {
         match op {
             Op::Neg => match rhs {
                 Int(i) => Val(Int(-i)),
@@ -113,7 +115,8 @@ impl Eval {
         }
     }
 
-    fn eval_block(env: EnvRef, block: BlockExpression) -> EvalResult {
+    #[inline(always)]
+    fn eval_block(env: EnvRef, block: &BlockExpression) -> EvalResult {
         let mut rv = Val(Nil);
 
         match block.statements.first() {
@@ -150,6 +153,7 @@ impl Eval {
         rv
     }
 
+    #[inline(always)]
     fn eval_assign(env: EnvRef, lhs: NodeRef, rhs: NodeRef, is_let: bool) -> EvalResult {
         match lhs {
             Some(lhs) => match &lhs.kind {
@@ -163,7 +167,7 @@ impl Eval {
                             }
                             Val(Nil) // TODO return without value
                         }
-                        err @ Err(_) => err,
+                        err @ Err(_) => return err,
                         _ => todo!(),
                     }
                 }
@@ -203,21 +207,70 @@ impl Eval {
         }
     }
 
-    fn eval_call(func: FnExpression, env: EnvRef, ast: NodeRef, args: &[Value]) -> EvalResult {
+    #[inline(always)]
+    fn eval_call(env: EnvRef, call: &CallExpression) -> EvalResult {
+        match env.borrow().get(call.ident.clone()) {
+            Some(Fn(func, ast, fnenv)) => {
+                let fnenv = Env::from(fnenv);
+                if func.args.len() != call.args.len() {
+                    return err!(
+                        "function {} expects {} arguments",
+                        call.ident,
+                        func.args.len()
+                    );
+                }
+
+                for (name, arg) in func.args.iter().zip(call.args.iter()) {
+                    match Self::eval_ast(env.clone(), arg.clone()) {
+                        Val(val) | Return(val) => {
+                            fnenv.borrow_mut().bind_local(name.clone(), val);
+                        }
+                        err @ Err(_) => return err,
+                    }
+                }
+                match Self::eval_ast(fnenv, ast) {
+                    Val(rv) | Return(rv) => Val(rv),
+                    err @ Err(_) => return err,
+                }
+            }
+            Some(BuiltIn(f)) => {
+                let mut args: Vec<Value> = Vec::new();
+                for arg in call.args.iter() {
+                    match Self::eval_ast(env.clone(), arg.clone()) {
+                        Val(val) | Return(val) => args.push(val),
+                        err @ Err(_) => return err,
+                    }
+                }
+                match f(&mut args) {
+                    Val(rv) | Return(rv) => Val(rv),
+                    Err(_) => todo!(),
+                }
+            }
+            _ => todo!(),
+        }
+    }
+
+    #[inline(always)]
+    fn call(func: &FnExpression, env: EnvRef, ast: NodeRef, args: &[Value]) -> EvalResult {
         assert_eq!(func.args.len(), args.len());
 
-        for (name, arg) in func.args.iter().zip(args.iter()) {
-            env.borrow_mut().bind_local(name.clone(), arg.clone());
+        {
+            let env = env.borrow_mut();
+            for (name, arg) in func.args.iter().zip(args.iter()) {
+                env.bind_local(name.clone(), arg.clone());
+            }
         }
+
         match Self::eval_ast(env, ast) {
             Val(rv) | Return(rv) => Val(rv),
             Err(_) => todo!(),
         }
     }
 
-    fn eval_range(env: EnvRef, range: RangeExpression, is_inclusive: bool) -> EvalResult {
-        if let Val(Int(lower)) = Self::eval_ast(env.clone(), range.lower) {
-            if let Val(Int(upper)) = Self::eval_ast(env, range.upper) {
+    #[inline(always)]
+    fn eval_range(env: EnvRef, range: &RangeExpression, is_inclusive: bool) -> EvalResult {
+        if let Val(Int(lower)) = Self::eval_ast(env.clone(), range.lower.clone()) {
+            if let Val(Int(upper)) = Self::eval_ast(env, range.upper.clone()) {
                 Val(Range(lower, if is_inclusive { upper } else { upper - 1 }))
             } else {
                 todo!()
@@ -239,7 +292,7 @@ impl Eval {
                 NodeKind::Str(b) => Val(Str(b)),
                 NodeKind::PrefixOp(op) => match Self::eval_ast(env, node.right.to_owned()) {
                     err @ Err(_) => err,
-                    Val(val) | Return(val) => Self::eval_prefix(&op, val),
+                    Val(val) | Return(val) => Self::eval_prefix(&op, &val),
                 },
                 NodeKind::InfixOp(op) => match op {
                     Op::Assign => {
@@ -250,9 +303,9 @@ impl Eval {
                             Self::eval_ast(env.clone(), node.left.to_owned()),
                             Self::eval_ast(env.clone(), node.right.to_owned()),
                         ) {
-                            p @ (Err(_), _) => p.0,
-                            p @ (_, Err(_)) => p.1,
-                            (lhs, rhs) => Self::eval_infix(&op, lhs, rhs),
+                            p @ (Err(_), _) => return p.0,
+                            p @ (_, Err(_)) => return p.1,
+                            (lhs, rhs) => Self::eval_infix(&op, &lhs, &rhs),
                         }
                     }
                 },
@@ -279,48 +332,9 @@ impl Eval {
                         err @ Err(_) => err,
                     }
                 }
-                NodeKind::Block(block) => Self::eval_block(env, block),
+                NodeKind::Block(block) => Self::eval_block(env, &block),
                 NodeKind::Fn(func) => Val(Fn(func, node.right.clone(), Env::from(env))),
-                NodeKind::Call(call) => match env.borrow().get(call.ident.clone()) {
-                    // TODO use Self::eval_call here
-                    Some(Fn(func, ast, fnenv)) => {
-                        let fnenv = Env::from(fnenv);
-                        if func.args.len() != call.args.len() {
-                            return err!(
-                                "function {} expects {} arguments",
-                                call.ident,
-                                func.args.len()
-                            );
-                        }
-
-                        for (name, arg) in func.args.iter().zip(call.args.iter()) {
-                            match Self::eval_ast(env.clone(), arg.clone()) {
-                                Val(val) | Return(val) => {
-                                    fnenv.borrow_mut().bind_local(name.clone(), val);
-                                }
-                                err @ Err(_) => return err,
-                            }
-                        }
-                        match Self::eval_ast(fnenv, ast) {
-                            Val(rv) | Return(rv) => Val(rv),
-                            e @ Err(_) => e,
-                        }
-                    }
-                    Some(BuiltIn(f)) => {
-                        let mut args: Vec<Value> = Vec::new();
-                        for arg in call.args.iter() {
-                            match Self::eval_ast(env.clone(), arg.clone()) {
-                                Val(val) | Return(val) => args.push(val),
-                                err @ Err(_) => return err,
-                            }
-                        }
-                        match f(&mut args) {
-                            Val(rv) | Return(rv) => Val(rv),
-                            Err(_) => todo!(),
-                        }
-                    }
-                    _ => todo!(),
-                },
+                NodeKind::Call(call) => Self::eval_call(env, &call),
                 NodeKind::Array(nodes) => {
                     let mut arr: Vec<Value> = Vec::new();
                     nodes.iter().for_each(|node| {
@@ -373,8 +387,8 @@ impl Eval {
                     };
                     Val(Pair(key, Rc::from(value)))
                 }
-                NodeKind::Range(range) => Self::eval_range(env, range, false),
-                NodeKind::RangeInclusive(range) => Self::eval_range(env, range, true),
+                NodeKind::Range(range) => Self::eval_range(env, &range, false),
+                NodeKind::RangeInclusive(range) => Self::eval_range(env, &range, true),
             },
             None => Val(Nil),
         }

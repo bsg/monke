@@ -1,11 +1,25 @@
-let fibonacci = fn(n) {
+let fibonacci_recursive = fn(n) {
     if(n <= 0) { return 0 }
     if(n == 1) { return 1 }
-    if(n > 1) { fibonacci(n - 1) + fibonacci(n - 2) }
+    fibonacci_recursive(n - 1) + fibonacci_recursive(n - 2)
 }
 
-foreach(0..=25, fn(n) {
+let fibonacci_iterative = fn(n) {
+    if(n <= 0) { return 0 }
+    if(n == 1) { return 1 }
+    let prevPrev = 0
+    let prev = 1
+    let currentNumber = 0
+    foreach(1..n, fn(i) {
+        currentNumber = prevPrev + prev
+        prevPrev = prev
+        prev = currentNumber
+    })
+    currentNumber
+}
+
+foreach(0..=90, fn(n) {
     print(n);
     print(": ");
-    println(fibonacci(n));
+    println(fibonacci_iterative(n));
 })

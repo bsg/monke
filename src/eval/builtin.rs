@@ -123,24 +123,19 @@ pub fn foreach(args: &mut Vec<Value>) -> EvalResult {
             match &args[0] {
                 Range(lower, upper) => {
                     for i in *lower..=*upper {
-                        Eval::eval_call(f.clone(), fnenv.clone(), ast.clone(), &[Int(i)]);
+                        Eval::call(f, fnenv.clone(), ast.clone(), &[Int(i)]);
                     }
                     Val(Nil)
                 }
                 Value::Array(arr) => {
                     for i in arr.borrow().iter() {
-                        Eval::eval_call(f.clone(), fnenv.clone(), ast.clone(), &[i.clone()]);
+                        Eval::call(f, fnenv.clone(), ast.clone(), &[i.clone()]);
                     }
                     Val(Nil)
                 }
                 Value::Map(map) => {
                     map.borrow().iter().for_each(|(k, v)| {
-                        Eval::eval_call(
-                            f.clone(),
-                            fnenv.clone(),
-                            ast.clone(),
-                            &[k.into(), v.clone()],
-                        );
+                        Eval::call(f, fnenv.clone(), ast.clone(), &[k.into(), v.clone()]);
                     });
                     Val(Nil)
                 }

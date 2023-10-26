@@ -53,7 +53,7 @@ impl Parser {
                     None
                 )
             }
-            _ => None,
+            _ => todo!(),
         }
     }
 
@@ -129,8 +129,7 @@ impl Parser {
                     body
                 )
             }
-            (Some(_), Some(_)) => todo!(),
-            (_, _) => None,
+            (_, _) => todo!(),
         }
     }
 
@@ -857,9 +856,6 @@ mod tests {
     fn parse_range() {
         assert_parse!(r#"1..10 ignore_this"#, "Range(Some(Int(1)), Some(Int(10)))");
 
-        assert_parse!(
-            r#"1..=10"#,
-            "RangeInclusive(Some(Int(1)), Some(Int(10)))"
-        );
+        assert_parse!(r#"1..=10"#, "RangeInclusive(Some(Int(1)), Some(Int(10)))");
     }
 }
