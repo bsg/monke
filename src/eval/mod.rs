@@ -1,6 +1,7 @@
 // TODO logical and/or should short circuit
 // TODO boi we need some tidying up
 
+mod builtin;
 mod env;
 mod error;
 mod result;
@@ -16,7 +17,7 @@ use crate::{
 use self::{
     env::{Env, EnvRef},
     error::Error,
-    result::{EvalResult, MapKey, Value},
+    result::{BuiltInFn, EvalResult, MapKey, Value},
 };
 
 pub struct Eval {
@@ -36,187 +37,29 @@ use Value::Map;
 use Value::Nil;
 use Value::Pair;
 use Value::Range;
-use Value::String;
+use Value::Str;
 
 impl Eval {
     pub fn new() -> Eval {
         let builtins = Env::new(); // TODO construct this somewhere else
 
-        builtins.borrow_mut().bind_local(
-            "len".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    if let String(s) = &args[0] {
-                        Return(Int(s.len().try_into().unwrap()))
-                    } else if let Array(a) = &args[0] {
-                        Return(Int(a.borrow().len().try_into().unwrap()))
-                    } else {
-                        err!("len() expected a string argument")
-                    }
-                } else {
-                    err!("len() expected one argument")
-                }
-            }),
-        );
+        let fns: &[(&str, BuiltInFn)] = &[
+            ("len", builtin::len),
+            ("print", builtin::print),
+            ("println", builtin::println),
+            ("push", builtin::push),
+            ("pop", builtin::pop),
+            ("first", builtin::first),
+            ("last", builtin::last),
+            ("tail", builtin::tail),
+            ("foreach", builtin::foreach),
+        ];
 
-        builtins.borrow_mut().bind_local(
-            "print".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    print!("{}", args[0]);
-                }
-                Return(Nil)
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "println".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    print!("{}\n", args[0]);
-                }
-                Return(Nil)
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "push".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 2 {
-                    let v = args[1].clone();
-                    if let Array(ref mut a) = args[0] {
-                        a.borrow_mut().push(v);
-                        Val(Nil)
-                    } else {
-                        err!("push() expected an array argument")
-                    }
-                } else {
-                    err!("push() expected one argument")
-                }
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "pop".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    if let Array(ref mut a) = args[0].clone() {
-                        match a.borrow_mut().pop() {
-                            Some(v) => Val(v),
-                            None => Val(Nil),
-                        }
-                    } else {
-                        err!("pop() expected an array argument")
-                    }
-                } else {
-                    err!("pop() expected one argument")
-                }
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "first".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    if let Array(ref mut a) = args[0].clone() {
-                        match a.borrow_mut().first() {
-                            Some(v) => Val(v.clone()),
-                            None => Val(Nil),
-                        }
-                    } else {
-                        err!("first() expected an array argument")
-                    }
-                } else {
-                    err!("first() expected one argument")
-                }
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "last".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    if let Array(ref mut a) = args[0].clone() {
-                        match a.borrow_mut().last() {
-                            Some(v) => Val(v.clone()),
-                            None => Val(Nil),
-                        }
-                    } else {
-                        err!("last() expected an array argument")
-                    }
-                } else {
-                    err!("last() expected one argument")
-                }
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "tail".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 1 {
-                    if let Array(ref mut a) = args[0].clone() {
-                        match a.borrow_mut().split_first() {
-                            Some((_, tail)) => Val(Array(Rc::from(RefCell::new(tail.to_vec())))),
-                            None => Val(Nil),
-                        }
-                    } else {
-                        err!("tail() expected an array argument")
-                    }
-                } else {
-                    err!("tail() expected one argument")
-                }
-            }),
-        );
-
-        builtins.borrow_mut().bind_local(
-            "foreach".into(),
-            BuiltIn(|args, _| {
-                if args.len() == 2 {
-                    if let Fn(f, ast, fnenv) = &args[1] {
-                        match &args[0] {
-                            Range(lower, upper) => {
-                                for i in *lower..=*upper {
-                                    Self::eval_call(
-                                        f.clone(),
-                                        fnenv.clone(),
-                                        ast.clone(),
-                                        &[Int(i)],
-                                    );
-                                }
-                                Val(Nil)
-                            }
-                            Array(arr) => {
-                                for i in arr.borrow().iter() {
-                                    Self::eval_call(
-                                        f.clone(),
-                                        fnenv.clone(),
-                                        ast.clone(),
-                                        &[i.clone()],
-                                    );
-                                }
-                                Val(Nil)
-                            }
-                            Map(map) => {
-                                map.borrow().iter().for_each(|(k, v)| {
-                                    Self::eval_call(
-                                        f.clone(),
-                                        fnenv.clone(),
-                                        ast.clone(),
-                                        &[k.into(), v.clone()],
-                                    );
-                                });
-                                Val(Nil)
-                            }
-                            _ => todo!(),
-                        }
-                    } else {
-                        todo!()
-                    }
-                } else {
-                    err!("foreach() expected two arguments")
-                }
-            }),
-        );
+        for (fn_name, fn_ref) in fns {
+            builtins
+                .borrow_mut()
+                .bind_local(Rc::from(*fn_name), BuiltIn(*fn_ref));
+        }
 
         Eval {
             env: Env::from(builtins),
@@ -240,10 +83,10 @@ impl Eval {
                 (Op::Ge, Int(a), Int(b)) => Val(Bool(a >= b)),
                 (Op::And, Bool(a), Bool(b)) => Val(Bool(a && b)),
                 (Op::Or, Bool(a), Bool(b)) => Val(Bool(a || b)),
-                (Op::Add, String(a), String(b)) => {
+                (Op::Add, Str(a), Str(b)) => {
                     let mut s = a.to_string();
                     s.push_str(&b);
-                    Val(String(Rc::from(s.as_str())))
+                    Val(Str(Rc::from(s.as_str())))
                 }
                 (_, lhs, rhs) => err!(
                     "unknown operator {} {} {}",
@@ -340,7 +183,7 @@ impl Eval {
                                 let key = match Self::eval_ast(env.clone(), idx.index.clone()) {
                                     Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
                                     Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
-                                    Val(String(key)) | Return(String(key)) => MapKey::String(key),
+                                    Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
                                     Err(_) => todo!(),
                                     _ => todo!(),
                                 };
@@ -393,7 +236,7 @@ impl Eval {
                 },
                 NodeKind::Int(i) => Val(Int(i)),
                 NodeKind::Bool(b) => Val(Bool(b)),
-                NodeKind::String(b) => Val(String(b)),
+                NodeKind::Str(b) => Val(Str(b)),
                 NodeKind::PrefixOp(op) => match Self::eval_ast(env, node.right.to_owned()) {
                     err @ Err(_) => err,
                     Val(val) | Return(val) => Self::eval_prefix(&op, val),
@@ -471,7 +314,7 @@ impl Eval {
                                 err @ Err(_) => return err,
                             }
                         }
-                        match f(&mut args, env.clone()) {
+                        match f(&mut args) {
                             Val(rv) | Return(rv) => Val(rv),
                             Err(_) => todo!(),
                         }
@@ -503,7 +346,7 @@ impl Eval {
                         let key = match Self::eval_ast(env.clone(), idx.index) {
                             Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
                             Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
-                            Val(String(key)) | Return(String(key)) => MapKey::String(key),
+                            Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
                             Err(_) => todo!(),
                             _ => todo!(),
                         };
@@ -520,7 +363,7 @@ impl Eval {
                     let key = match Self::eval_ast(env.clone(), pair.key) {
                         Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
                         Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
-                        Val(String(key)) | Return(String(key)) => MapKey::String(key),
+                        Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
                         Err(_) => todo!(),
                         _ => todo!(),
                     };
@@ -539,7 +382,7 @@ impl Eval {
 
     pub fn eval(&self, code: &str) -> EvalResult {
         let mut last_result = Val(Nil);
-        let mut parser = Parser::new(&code);
+        let mut parser = Parser::new(code);
 
         loop {
             let node = parser.parse_statement();
@@ -778,12 +621,9 @@ mod tests {
         "#;
         let ctx = Eval::new();
         ctx.eval(code.into());
-        assert_eq!(
-            ctx.eval("fizzbuzz(15)".into()),
-            Val(String("fizzbuzz".into()))
-        );
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -803,12 +643,9 @@ mod tests {
         "#;
         let ctx = Eval::new();
         ctx.eval(code.into());
-        assert_eq!(
-            ctx.eval("fizzbuzz(15)".into()),
-            Val(String("fizzbuzz".into()))
-        );
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -827,12 +664,9 @@ mod tests {
         "#;
         let ctx = Eval::new();
         ctx.eval(code.into());
-        assert_eq!(
-            ctx.eval("fizzbuzz(15)".into()),
-            Val(String("fizzbuzz".into()))
-        );
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -844,12 +678,9 @@ mod tests {
         "#;
         let ctx = Eval::new();
         ctx.eval(code.into());
-        assert_eq!(
-            ctx.eval("fizzbuzz(15)".into()),
-            Val(String("fizzbuzz".into()))
-        );
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(String("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(String("buzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -932,8 +763,8 @@ mod tests {
     #[test]
     fn eval_map_literal() {
         let mut map: HashMap<MapKey, Value> = HashMap::new();
-        map.insert(MapKey::String(Rc::from("a")), Int(1));
-        map.insert(MapKey::String(Rc::from("b")), Int(2));
+        map.insert(MapKey::Str(Rc::from("a")), Int(1));
+        map.insert(MapKey::Str(Rc::from("b")), Int(2));
         assert_eq!(
             Eval::new().eval(r#"{"a": 1, "b": 2}"#.into()),
             Val(Map(Rc::from(RefCell::new(map))))

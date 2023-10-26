@@ -309,7 +309,7 @@ impl Parser {
                 node!(NodeKind::Int(i), None, None)
             }
             // STRING
-            Some(Token::String(s)) => node!(NodeKind::String(s.clone()), None, None),
+            Some(Token::Str(s)) => node!(NodeKind::Str(s.clone()), None, None),
             // IDENT
             Some(Token::Ident(_)) => self.parse_ident(),
             // TRUE
@@ -679,7 +679,7 @@ mod tests {
         assert_parse!(
             r#"{"1"}{"2"}"#,
             "Block\
-            -String(1)"
+            -Str(1)"
         );
     }
 
@@ -848,7 +848,7 @@ mod tests {
         assert_parse!(
             r#"{"a": 1, true: 2}"#,
             "Block\
-            -Pair(Some(String(\"a\")), Some(Int(1)))\
+            -Pair(Some(Str(\"a\")), Some(Int(1)))\
             -Pair(Some(Bool(true)), Some(Int(2)))"
         );
     }

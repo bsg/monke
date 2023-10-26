@@ -6,19 +6,21 @@ use super::{env::EnvRef, error::Error};
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum MapKey {
-    String(Rc<str>),
+    Str(Rc<str>),
     Int(i64),
     Bool(bool),
 }
+
+pub type BuiltInFn = fn(&mut Vec<Value>) -> EvalResult;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {
     Nil,
     Int(i64),
     Bool(bool),
-    String(Rc<str>),
+    Str(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
-    BuiltIn(fn(&mut Vec<Value>, EnvRef) -> EvalResult),
+    BuiltIn(BuiltInFn),
     Array(Rc<RefCell<Vec<Value>>>),
     Pair(MapKey, Rc<Value>),
     Map(Rc<RefCell<HashMap<MapKey, Value>>>),
@@ -28,7 +30,7 @@ pub enum Value {
 impl From<MapKey> for Value {
     fn from(key: MapKey) -> Self {
         match key {
-            MapKey::String(s) => Value::String(s),
+            MapKey::Str(s) => Value::Str(s),
             MapKey::Int(i) => Value::Int(i),
             MapKey::Bool(b) => Value::Bool(b),
         }
@@ -38,7 +40,7 @@ impl From<MapKey> for Value {
 impl From<&MapKey> for Value {
     fn from(key: &MapKey) -> Self {
         match key {
-            MapKey::String(s) => Value::String(s.clone()),
+            MapKey::Str(s) => Value::Str(s.clone()),
             MapKey::Int(i) => Value::Int(*i),
             MapKey::Bool(b) => Value::Bool(*b),
         }
@@ -51,7 +53,7 @@ impl Value {
             Value::Nil => "Nil",
             Value::Int(_) => "Int",
             Value::Bool(_) => "Bool",
-            Value::String(_) => "String",
+            Value::Str(_) => "Str",
             Value::Fn(..) => "Fn",
             Value::BuiltIn(..) => "Fn",
             Value::Array(_) => "Array",
@@ -68,7 +70,7 @@ impl std::fmt::Display for Value {
             Value::Nil => f.write_str("nil"),
             Value::Int(val) => f.write_fmt(format_args!("{}", val)),
             Value::Bool(val) => f.write_fmt(format_args!("{}", val)),
-            Value::String(val) => f.write_fmt(format_args!("{}", val)),
+            Value::Str(val) => f.write_fmt(format_args!("{}", val)),
             Value::Fn(..) => f.write_str("fn"),
             Value::BuiltIn(..) => f.write_str("builtin"),
             Value::Array(arr) => f.write_fmt(format_args!("Array{:?}", arr)),

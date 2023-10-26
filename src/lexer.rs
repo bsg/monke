@@ -6,7 +6,7 @@ pub enum Token {
     Eof,
     Ident(Rc<str>),
     Int(Rc<str>),
-    String(Rc<str>),
+    Str(Rc<str>),
 
     // Operators
     Assign,
@@ -192,7 +192,7 @@ impl Tokens {
             Some(b',') => Token::Comma,
             Some(b':') => Token::Colon,
             Some(b';') => Token::Semicolon,
-            Some(b'"') => Token::String(self.read_string()),
+            Some(b'"') => Token::Str(self.read_string()),
             Some(c) => match c {
                 (b'a'..=b'z') | (b'A'..=b'Z') | b'_' => {
                     let ident = self.read_identifier();
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn string() {
-        let expected = [LBrace, String("some string".into()), RBrace];
+        let expected = [LBrace, Str("some string".into()), RBrace];
         let mut tokens = Lexer::new(r#"{"some string"}"#).tokens();
         expected
             .iter()

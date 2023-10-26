@@ -22,11 +22,9 @@ fn main() {
     let args = Args::parse();
     if args.interactive {
         Repl::start();
-    } else {
-        if let Some(path) = args.path {
-            let code = fs::read_to_string(path).unwrap();
-            let ctx = Eval::new();
-            ctx.eval(code.as_str());
-        }
+    } else if let Some(path) = args.path {
+        let code = fs::read_to_string(path).unwrap();
+        let ctx = Eval::new();
+        ctx.eval(code.as_str());
     }
 }
