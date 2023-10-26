@@ -24,6 +24,7 @@ pub enum Op {
     Call,
     Index,
     Colon,
+    Range,
 }
 
 impl std::fmt::Display for Op {
@@ -45,9 +46,7 @@ impl std::fmt::Display for Op {
             Op::Not => f.write_str("!"),
             Op::And => f.write_str("&&"),
             Op::Or => f.write_str("||"),
-            Op::Call => Ok(()),
-            Op::Index => Ok(()),
-            Op::Colon => Ok(())
+            _ => Ok(()),
         }
     }
 }
@@ -105,6 +104,12 @@ pub struct PairExpression {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct RangeExpression {
+    pub lower: NodeRef,
+    pub upper: NodeRef,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum NodeKind {
     Ident(Rc<str>),
     Int(i64),
@@ -121,6 +126,8 @@ pub enum NodeKind {
     Array(Vec<Rc<Node>>),
     Index(IndexExpression),
     Pair(PairExpression),
+    Range(RangeExpression),
+    RangeInclusive(RangeExpression),
 }
 
 #[derive(Clone, PartialEq)]
@@ -148,6 +155,10 @@ impl fmt::Debug for NodeKind {
             Self::Array(arg0) => write!(f, "Array{:?}", arg0),
             Self::Index(arg0) => write!(f, "{:?}", arg0),
             Self::Pair(pair) => write!(f, "Pair({:?}, {:?})", pair.key, pair.value),
+            Self::Range(range) => write!(f, "Range({:?}, {:?})", range.lower, range.upper),
+            Self::RangeInclusive(range) => {
+                write!(f, "RangeInclusive({:?}, {:?})", range.lower, range.upper)
+            }
         }
     }
 }
@@ -181,6 +192,10 @@ impl fmt::Display for Node {
                     NodeKind::Array(a) => format!("Array{:?}\n", a),
                     NodeKind::Index(idx) => format!("{:?}\n", idx),
                     NodeKind::Pair(pair) => format!("Pair({:?}, {:?})\n", pair.key, pair.value),
+                    NodeKind::Range(range) =>
+                        format!("Range({:?}, {:?})", range.lower, range.upper),
+                    NodeKind::RangeInclusive(range) =>
+                        format!("RangeInclusive({:?}, {:?})", range.lower, range.upper),
                 }
             ))?;
             match &node.kind {

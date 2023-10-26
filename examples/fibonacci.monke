@@ -1,5 +1,11 @@
 let fibonacci = fn(n) {
-    if(n <= 1) {1} {n + fibonacci(n - 1)}
+    if(n <= 0) { return 0 }
+    if(n == 1) { return 1 }
+    if(n > 1) { fibonacci(n - 1) + fibonacci(n - 2) }
 }
 
-println(fibonacci(5))
+foreach(0..=10, fn(n) {
+    print(n);
+    print(": ");
+    println(fibonacci(n));
+})

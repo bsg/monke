@@ -271,6 +271,30 @@ impl Parser {
         }
     }
 
+    fn parse_range(&mut self, lower: NodeRef) -> NodeRef {
+        assert_eq!(self.peek_token, Some(Token::Range));
+        self.next_token();
+
+        if let Some(Token::Assign) = self.peek_token {
+            self.next_token();
+            let upper = self.parse_expression(0);
+
+            node!(
+                NodeKind::RangeInclusive(RangeExpression { lower, upper }),
+                None,
+                None
+            )
+        } else {
+            let upper = self.parse_expression(0);
+
+            node!(
+                NodeKind::Range(RangeExpression { lower, upper }),
+                None,
+                None
+            )
+        }
+    }
+
     pub fn parse_expression(&mut self, precedence: i32) -> NodeRef {
         self.next_token();
         let mut lhs = match &self.curr_token {
@@ -339,6 +363,7 @@ impl Parser {
                 Some(Token::LParen) => Some(Op::Call),
                 Some(Token::LBracket) => Some(Op::Index),
                 Some(Token::Colon) => Some(Op::Colon),
+                Some(Token::Range) => Some(Op::Range),
                 _ => break,
             };
 
@@ -351,6 +376,9 @@ impl Parser {
                 }
                 Some(Op::Colon) => {
                     lhs = self.parse_pair(lhs);
+                }
+                Some(Op::Range) => {
+                    lhs = self.parse_range(lhs);
                 }
                 Some(op) => {
                     if op.precedence() < precedence {
@@ -818,10 +846,20 @@ mod tests {
     #[test]
     fn parse_pairs() {
         assert_parse!(
-            r#"{"a": 1, true: 2} ignore_this"#,
+            r#"{"a": 1, true: 2}"#,
             "Block\
             -Pair(Some(String(\"a\")), Some(Int(1)))\
             -Pair(Some(Bool(true)), Some(Int(2)))"
+        );
+    }
+
+    #[test]
+    fn parse_range() {
+        assert_parse!(r#"1..10 ignore_this"#, "Range(Some(Int(1)), Some(Int(10)))");
+
+        assert_parse!(
+            r#"1..=10"#,
+            "RangeInclusive(Some(Int(1)), Some(Int(10)))"
         );
     }
 }

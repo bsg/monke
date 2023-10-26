@@ -26,6 +26,7 @@ pub enum Token {
     Ge,
     Eq,
     NotEq,
+    Range,
 
     // Delimiters
     Comma,
@@ -175,6 +176,13 @@ impl Tokens {
                 }
                 _ => Token::BitwiseOr,
             },
+            Some(b'.') => match self.peek_char() {
+                Some(b'.') => {
+                    self.read_char();
+                    Token::Range
+                }
+                _ => unimplemented!(),
+            },
             Some(b'(') => Token::LParen,
             Some(b')') => Token::RParen,
             Some(b'{') => Token::LBrace,
@@ -252,10 +260,10 @@ mod tests {
 
     #[test]
     fn symbols() {
-        let source = "=+-!*/(){}[],;:";
+        let source = "=+-!..*/(){}[],;:";
         let expected = [
-            Assign, Plus, Minus, Bang, Asterisk, Slash, LParen, RParen, LBrace, RBrace, LBracket,
-            RBracket, Comma, Semicolon, Colon,
+            Assign, Plus, Minus, Bang, Range, Asterisk, Slash, LParen, RParen, LBrace, RBrace, LBracket,
+            RBracket, Comma, Semicolon, Colon
         ];
         let mut tokens = Lexer::new(source).tokens();
         expected

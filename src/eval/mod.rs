@@ -8,7 +8,7 @@ mod result;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::{
-    ast::{BlockExpression, NodeKind, NodeRef, Op},
+    ast::{BlockExpression, FnExpression, NodeKind, NodeRef, Op, RangeExpression},
     err,
     parser::Parser,
 };
@@ -35,6 +35,7 @@ use Value::Int;
 use Value::Map;
 use Value::Nil;
 use Value::Pair;
+use Value::Range;
 use Value::String;
 
 impl Eval {
@@ -43,7 +44,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "len".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     if let String(s) = &args[0] {
                         Return(Int(s.len().try_into().unwrap()))
@@ -60,7 +61,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "print".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     print!("{}", args[0]);
                 }
@@ -70,7 +71,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "println".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     print!("{}\n", args[0]);
                 }
@@ -80,7 +81,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "push".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 2 {
                     let v = args[1].clone();
                     if let Array(ref mut a) = args[0] {
@@ -97,7 +98,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "pop".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     if let Array(ref mut a) = args[0].clone() {
                         match a.borrow_mut().pop() {
@@ -115,7 +116,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "first".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     if let Array(ref mut a) = args[0].clone() {
                         match a.borrow_mut().first() {
@@ -133,7 +134,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "last".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     if let Array(ref mut a) = args[0].clone() {
                         match a.borrow_mut().last() {
@@ -151,7 +152,7 @@ impl Eval {
 
         builtins.borrow_mut().bind_local(
             "tail".into(),
-            BuiltIn(|args| {
+            BuiltIn(|args, _| {
                 if args.len() == 1 {
                     if let Array(ref mut a) = args[0].clone() {
                         match a.borrow_mut().split_first() {
@@ -163,6 +164,36 @@ impl Eval {
                     }
                 } else {
                     err!("tail() expected one argument")
+                }
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "foreach".into(),
+            BuiltIn(|args, _| {
+                if args.len() == 2 {
+                    if let Fn(f, ast, fnenv) = &args[1] {
+                        match args[0] {
+                            Range(lower, upper) => {
+                                for i in lower..=upper {
+                                    Self::eval_call(
+                                        f.clone(),
+                                        fnenv.clone(),
+                                        ast.clone(),
+                                        &[Int(i)],
+                                    );
+                                }
+                                Val(Nil)
+                            }
+                            Array(_) => todo!(),
+                            Map(_) => todo!(),
+                            _ => todo!(),
+                        }
+                    } else {
+                        todo!()
+                    }
+                } else {
+                    err!("foreach() expected two arguments")
                 }
             }),
         );
@@ -309,6 +340,30 @@ impl Eval {
         }
     }
 
+    fn eval_call(func: FnExpression, env: EnvRef, ast: NodeRef, args: &[Value]) -> EvalResult {
+        assert_eq!(func.args.len(), args.len());
+
+        for (name, arg) in func.args.iter().zip(args.iter()) {
+            env.borrow_mut().bind_local(name.clone(), arg.clone());
+        }
+        match Self::eval_ast(env, ast) {
+            Val(rv) | Return(rv) => Val(rv),
+            Err(_) => todo!(),
+        }
+    }
+
+    fn eval_range(env: EnvRef, range: RangeExpression, is_inclusive: bool) -> EvalResult {
+        if let Val(Int(lower)) = Self::eval_ast(env.clone(), range.lower) {
+            if let Val(Int(upper)) = Self::eval_ast(env, range.upper) {
+                Val(Range(lower, if is_inclusive { upper } else { upper - 1 }))
+            } else {
+                todo!()
+            }
+        } else {
+            todo!()
+        }
+    }
+
     fn eval_ast(env: EnvRef, node_ref: NodeRef) -> EvalResult {
         match node_ref.clone() {
             Some(node) => match node.kind.clone() {
@@ -364,7 +419,9 @@ impl Eval {
                 NodeKind::Block(block) => Self::eval_block(env, block),
                 NodeKind::Fn(func) => Val(Fn(func, node.right.clone(), Env::from(env))),
                 NodeKind::Call(call) => match env.borrow().get(call.ident.clone()) {
+                    // TODO use Self::eval_call here
                     Some(Fn(func, ast, fnenv)) => {
+                        let fnenv = Env::from(fnenv.clone());
                         if func.args.len() != call.args.len() {
                             return err!(
                                 "function {} expects {} arguments",
@@ -372,6 +429,7 @@ impl Eval {
                                 func.args.len()
                             );
                         }
+
                         for (name, arg) in func.args.iter().zip(call.args.iter()) {
                             match Self::eval_ast(env.clone(), arg.clone()) {
                                 Val(val) | Return(val) => {
@@ -382,7 +440,7 @@ impl Eval {
                         }
                         match Self::eval_ast(fnenv, ast) {
                             Val(rv) | Return(rv) => Val(rv),
-                            Err(_) => todo!(),
+                            e @ Err(_) => e,
                         }
                     }
                     Some(BuiltIn(f)) => {
@@ -393,7 +451,7 @@ impl Eval {
                                 err @ Err(_) => return err,
                             }
                         }
-                        match f(&mut args) {
+                        match f(&mut args, env.clone()) {
                             Val(rv) | Return(rv) => Val(rv),
                             Err(_) => todo!(),
                         }
@@ -452,6 +510,8 @@ impl Eval {
                     };
                     Val(Pair(key, Rc::from(value)))
                 }
+                NodeKind::Range(range) => Self::eval_range(env, range, false),
+                NodeKind::RangeInclusive(range) => Self::eval_range(env, range, true),
             },
             None => Val(Nil),
         }
@@ -663,19 +723,19 @@ mod tests {
     fn fibonacci() {
         let code = "
             let fibonacci = fn(n) {
-                if(n <= 1) {
-                    1;
-                } else {
-                    n + fibonacci(n - 1);
-                }
+                println(n);
+                if(n == 0) { return 0 }
+                if(n == 1) { return 1 }
+                if(n > 1) { fibonacci(n - 1) + fibonacci(n - 2) }
             }
         ";
         let ctx = Eval::new();
         ctx.eval(code.into());
-        assert_eq!(ctx.eval("fibonacci(0)".into()), Val(Int(1)));
+        assert_eq!(ctx.eval("fibonacci(0)".into()), Val(Int(0)));
         assert_eq!(ctx.eval("fibonacci(1)".into()), Val(Int(1)));
-        assert_eq!(ctx.eval("fibonacci(2)".into()), Val(Int(3)));
-        assert_eq!(ctx.eval("fibonacci(3)".into()), Val(Int(6)));
+        assert_eq!(ctx.eval("fibonacci(2)".into()), Val(Int(1)));
+        assert_eq!(ctx.eval("fibonacci(3)".into()), Val(Int(2)));
+        assert_eq!(ctx.eval("fibonacci(4)".into()), Val(Int(3)));
     }
 
     #[test]
@@ -870,5 +930,29 @@ mod tests {
         assert_eq!(ctx.eval(r#"map["a"]"#.into()), Val(Int(1)));
         ctx.eval(r#"map["a"]=2"#.into());
         assert_eq!(ctx.eval(r#"map["a"]"#.into()), Val(Int(2)));
+    }
+
+    #[test]
+    fn eval_range() {
+        assert_eq!(Eval::new().eval(r#"{0..10}"#.into()), Val(Range(0, 9)));
+
+        assert_eq!(Eval::new().eval(r#"{0..=10}"#.into()), Val(Range(0, 10)));
+    }
+
+    #[test]
+    fn eval_foreach_range() {
+        let code = r#"
+            let i = 0;
+            foreach(1..4, fn(n){i = i + n})
+            i
+        "#;
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(6)));
+
+        let code = r#"
+            let i = 0;
+            foreach(1..=4, fn(n){i = i + n})
+            i
+        "#;
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
     }
 }

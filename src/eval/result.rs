@@ -1,4 +1,4 @@
-use std::{rc::Rc, cell::RefCell, collections::HashMap};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::ast::{FnExpression, NodeRef};
 
@@ -8,7 +8,7 @@ use super::{env::EnvRef, error::Error};
 pub enum MapKey {
     String(Rc<str>),
     Int(i64),
-    Bool(bool)
+    Bool(bool),
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -18,10 +18,11 @@ pub enum Value {
     Bool(bool),
     String(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
-    BuiltIn(fn(&mut Vec<Value>) -> EvalResult),
+    BuiltIn(fn(&mut Vec<Value>, EnvRef) -> EvalResult),
     Array(Rc<RefCell<Vec<Value>>>),
     Pair(MapKey, Rc<Value>),
-    Map(Rc<RefCell<HashMap<MapKey, Value>>>)
+    Map(Rc<RefCell<HashMap<MapKey, Value>>>),
+    Range(i64, i64),
 }
 
 impl Value {
@@ -36,6 +37,7 @@ impl Value {
             Value::Array(_) => "Array",
             Value::Map(_) => "Map",
             Value::Pair(_, _) => "Pair",
+            Value::Range(_, _) => "Range",
         }
     }
 }
@@ -52,6 +54,9 @@ impl std::fmt::Display for Value {
             Value::Array(arr) => f.write_fmt(format_args!("Array{:?}", arr)),
             Value::Map(map) => f.write_fmt(format_args!("Map{:?}", map)),
             Value::Pair(key, value) => f.write_fmt(format_args!("Pair({:?}, {:?})", key, value)),
+            Value::Range(lower, upper) => {
+                f.write_fmt(format_args!("Range({:?}, {:?})", lower, upper))
+            }
         }
     }
 }
