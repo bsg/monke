@@ -29,6 +29,7 @@ pub enum Token {
 
     // Delimiters
     Comma,
+    Colon,
     Semicolon,
     LParen,
     RParen,
@@ -181,6 +182,7 @@ impl Tokens {
             Some(b'[') => Token::LBracket,
             Some(b']') => Token::RBracket,
             Some(b',') => Token::Comma,
+            Some(b':') => Token::Colon,
             Some(b';') => Token::Semicolon,
             Some(b'"') => Token::String(self.read_string()),
             Some(c) => match c {
@@ -250,10 +252,10 @@ mod tests {
 
     #[test]
     fn symbols() {
-        let source = "=+-!*/(){}[],;";
+        let source = "=+-!*/(){}[],;:";
         let expected = [
             Assign, Plus, Minus, Bang, Asterisk, Slash, LParen, RParen, LBrace, RBrace, LBracket,
-            RBracket, Comma, Semicolon,
+            RBracket, Comma, Semicolon, Colon,
         ];
         let mut tokens = Lexer::new(source).tokens();
         expected

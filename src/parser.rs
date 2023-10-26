@@ -219,6 +219,17 @@ impl Parser {
         )
     }
 
+    fn parse_pair(&mut self, key: NodeRef) -> NodeRef {
+        assert_eq!(self.peek_token, Some(Token::Colon));
+        self.next_token();
+        let value = self.parse_expression(0);
+        if let Some(Token::Comma) = self.peek_token {
+            self.next_token();
+        }
+
+        node!(NodeKind::Pair(PairExpression { key, value }), None, None)
+    }
+
     pub fn parse_statement(&mut self) -> NodeRef {
         let node = match self.tokens.peek() {
             Some(Token::Let) => {
@@ -304,6 +315,7 @@ impl Parser {
             Some(Token::Fn) => self.parse_fn(),
             // IF
             Some(Token::If) => self.parse_if(),
+
             _ => return None,
         };
 
@@ -326,6 +338,7 @@ impl Parser {
                 Some(Token::Or) => Some(Op::Or),
                 Some(Token::LParen) => Some(Op::Call),
                 Some(Token::LBracket) => Some(Op::Index),
+                Some(Token::Colon) => Some(Op::Colon),
                 _ => break,
             };
 
@@ -335,6 +348,9 @@ impl Parser {
                 }
                 Some(Op::Index) => {
                     lhs = self.parse_index();
+                }
+                Some(Op::Colon) => {
+                    lhs = self.parse_pair(lhs);
                 }
                 Some(op) => {
                     if op.precedence() < precedence {
@@ -797,5 +813,15 @@ mod tests {
     #[should_panic]
     fn parse_invalid_index() {
         assert_parse!("arr[2", "");
+    }
+
+    #[test]
+    fn parse_pairs() {
+        assert_parse!(
+            r#"{"a": 1, true: 2} ignore_this"#,
+            "Block\
+            -Pair(Some(String(\"a\")), Some(Int(1)))\
+            -Pair(Some(Bool(true)), Some(Int(2)))"
+        );
     }
 }

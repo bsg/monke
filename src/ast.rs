@@ -1,4 +1,7 @@
-use std::{fmt, rc::Rc};
+use std::{
+    fmt::{self},
+    rc::Rc,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Op {
@@ -20,6 +23,7 @@ pub enum Op {
     Or,
     Call,
     Index,
+    Colon,
 }
 
 impl std::fmt::Display for Op {
@@ -41,8 +45,9 @@ impl std::fmt::Display for Op {
             Op::Not => f.write_str("!"),
             Op::And => f.write_str("&&"),
             Op::Or => f.write_str("||"),
-            Op::Call => f.write_str(""),
-            Op::Index => f.write_str(""),
+            Op::Call => Ok(()),
+            Op::Index => Ok(()),
+            Op::Colon => Ok(())
         }
     }
 }
@@ -94,6 +99,12 @@ pub struct IndexExpression {
 }
 
 #[derive(Clone, PartialEq)]
+pub struct PairExpression {
+    pub key: NodeRef,
+    pub value: NodeRef,
+}
+
+#[derive(Clone, PartialEq)]
 pub enum NodeKind {
     Ident(Rc<str>),
     Int(i64),
@@ -109,6 +120,7 @@ pub enum NodeKind {
     Call(CallExpression),
     Array(Vec<Rc<Node>>),
     Index(IndexExpression),
+    Pair(PairExpression),
 }
 
 #[derive(Clone, PartialEq)]
@@ -135,6 +147,7 @@ impl fmt::Debug for NodeKind {
             Self::Call(arg0) => write!(f, "Call(\n{:?})", arg0),
             Self::Array(arg0) => write!(f, "Array{:?}", arg0),
             Self::Index(arg0) => write!(f, "{:?}", arg0),
+            Self::Pair(pair) => write!(f, "Pair({:?}, {:?})", pair.key, pair.value),
         }
     }
 }
@@ -167,6 +180,7 @@ impl fmt::Display for Node {
                     NodeKind::Call(_) => "Call ".to_string(),
                     NodeKind::Array(a) => format!("Array{:?}\n", a),
                     NodeKind::Index(idx) => format!("{:?}\n", idx),
+                    NodeKind::Pair(pair) => format!("Pair({:?}, {:?})\n", pair.key, pair.value),
                 }
             ))?;
             match &node.kind {
