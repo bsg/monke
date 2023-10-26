@@ -46,9 +46,9 @@ impl Eval {
             BuiltIn(|args| {
                 if args.len() == 1 {
                     if let String(s) = &args[0] {
-                        EvalResult::Return(Int(s.len().try_into().unwrap()))
+                        Return(Int(s.len().try_into().unwrap()))
                     } else if let Array(a) = &args[0] {
-                        EvalResult::Return(Int(a.borrow().len().try_into().unwrap()))
+                        Return(Int(a.borrow().len().try_into().unwrap()))
                     } else {
                         err!("len() expected a string argument")
                     }
@@ -66,7 +66,7 @@ impl Eval {
                         print!("{}", s);
                     }
                 }
-                EvalResult::Return(Nil)
+                Return(Nil)
             }),
         );
 
@@ -166,10 +166,7 @@ impl Eval {
 
     fn eval_infix(op: &Op, lhs: EvalResult, rhs: EvalResult) -> EvalResult {
         match (lhs, rhs) {
-            (Val(lhs), Val(rhs))
-            | (Val(lhs), Return(rhs))
-            | (Return(lhs), Val(rhs))
-            | (Return(lhs), Return(rhs)) => match (op, lhs, rhs) {
+            (Val(lhs) | Return(lhs), Val(rhs) | Return(rhs)) => match (op, lhs, rhs) {
                 (Op::Assign, ..) => unreachable!(),
                 (Op::Eq, lhs, rhs) => Val(Bool(lhs == rhs)),
                 (Op::NotEq, lhs, rhs) => Val(Bool(lhs != rhs)),
