@@ -59,12 +59,20 @@ impl Eval {
         );
 
         builtins.borrow_mut().bind_local(
-            "puts".into(),
+            "print".into(),
             BuiltIn(|args| {
                 if args.len() == 1 {
-                    if let String(s) = &args[0] {
-                        print!("{}", s);
-                    }
+                    print!("{}", args[0]);
+                }
+                Return(Nil)
+            }),
+        );
+
+        builtins.borrow_mut().bind_local(
+            "println".into(),
+            BuiltIn(|args| {
+                if args.len() == 1 {
+                    print!("{}\n", args[0]);
                 }
                 Return(Nil)
             }),
@@ -449,7 +457,7 @@ impl Eval {
         }
     }
 
-    pub fn eval(&self, code: Rc<str>) -> EvalResult {
+    pub fn eval(&self, code: &str) -> EvalResult {
         let mut last_result = Val(Nil);
         let mut parser = Parser::new(&code);
 
