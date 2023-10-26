@@ -173,9 +173,9 @@ impl Eval {
             BuiltIn(|args, _| {
                 if args.len() == 2 {
                     if let Fn(f, ast, fnenv) = &args[1] {
-                        match args[0] {
+                        match &args[0] {
                             Range(lower, upper) => {
-                                for i in lower..=upper {
+                                for i in *lower..=*upper {
                                     Self::eval_call(
                                         f.clone(),
                                         fnenv.clone(),
@@ -185,8 +185,28 @@ impl Eval {
                                 }
                                 Val(Nil)
                             }
-                            Array(_) => todo!(),
-                            Map(_) => todo!(),
+                            Array(arr) => {
+                                for i in arr.borrow().iter() {
+                                    Self::eval_call(
+                                        f.clone(),
+                                        fnenv.clone(),
+                                        ast.clone(),
+                                        &[i.clone()],
+                                    );
+                                }
+                                Val(Nil)
+                            }
+                            Map(map) => {
+                                map.borrow().iter().for_each(|(k, v)| {
+                                    Self::eval_call(
+                                        f.clone(),
+                                        fnenv.clone(),
+                                        ast.clone(),
+                                        &[k.into(), v.clone()],
+                                    );
+                                });
+                                Val(Nil)
+                            }
                             _ => todo!(),
                         }
                     } else {
@@ -951,6 +971,26 @@ mod tests {
         let code = r#"
             let i = 0;
             foreach(1..=4, fn(n){i = i + n})
+            i
+        "#;
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
+    }
+
+    #[test]
+    fn eval_foreach_array() {
+        let code = r#"
+            let i = 0;
+            foreach([1, 2, 3, 4], fn(n){i = i + n})
+            i
+        "#;
+        assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
+    }
+
+    #[test]
+    fn eval_foreach_map() {
+        let code = r#"
+            let i = 0;
+            foreach({1: 2, 3: 4}, fn(k, v){i = i + k + v})
             i
         "#;
         assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));

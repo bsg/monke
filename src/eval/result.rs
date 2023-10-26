@@ -25,6 +25,26 @@ pub enum Value {
     Range(i64, i64),
 }
 
+impl From<MapKey> for Value {
+    fn from(key: MapKey) -> Self {
+        match key {
+            MapKey::String(s) => Value::String(s),
+            MapKey::Int(i) => Value::Int(i),
+            MapKey::Bool(b) => Value::Bool(b),
+        }
+    }
+}
+
+impl From<&MapKey> for Value {
+    fn from(key: &MapKey) -> Self {
+        match key {
+            MapKey::String(s) => Value::String(s.clone()),
+            MapKey::Int(i) => Value::Int(*i),
+            MapKey::Bool(b) => Value::Bool(*b),
+        }
+    }
+}
+
 impl Value {
     pub fn type_str(&self) -> &str {
         match self {
