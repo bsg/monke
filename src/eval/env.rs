@@ -19,9 +19,11 @@ impl Env {
     }
 
     pub fn from(outer: EnvRef) -> EnvRef {
-        let env = Self::new();
-        env.borrow_mut().outer = Some(outer);
-        env
+        let env = Env {
+            store: RefCell::new(BTreeMap::new()),
+            outer: Some(outer),
+        };
+        Rc::new(RefCell::new(env))
     }
 
     pub fn bind_local(&self, name: Rc<str>, val: Value) {
@@ -29,8 +31,9 @@ impl Env {
     }
 
     pub fn bind(&self, name: Rc<str>, val: Value) -> bool {
-        if self.store.borrow().contains_key(&name) {
-            self.store.borrow_mut().insert(name, val);
+        let mut store = self.store.borrow_mut();
+        if store.contains_key(&name) {
+            store.insert(name, val);
             true
         } else {
             match &self.outer {
@@ -41,8 +44,9 @@ impl Env {
     }
 
     pub fn get(&self, name: Rc<str>) -> Option<Value> {
-        if self.store.borrow().contains_key(&name) {
-            self.store.borrow_mut().get(&name).cloned()
+        let store = self.store.borrow();
+        if store.contains_key(&name) {
+            store.get(&name).cloned()
         } else {
             match &self.outer {
                 Some(outer) => outer.borrow().get(name),

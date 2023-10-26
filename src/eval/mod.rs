@@ -284,7 +284,7 @@ impl Eval {
                 NodeKind::Call(call) => match env.borrow().get(call.ident.clone()) {
                     // TODO use Self::eval_call here
                     Some(Fn(func, ast, fnenv)) => {
-                        let fnenv = Env::from(fnenv.clone());
+                        let fnenv = Env::from(fnenv);
                         if func.args.len() != call.args.len() {
                             return err!(
                                 "function {} expects {} arguments",

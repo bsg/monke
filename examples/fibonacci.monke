@@ -4,7 +4,7 @@ let fibonacci = fn(n) {
     if(n > 1) { fibonacci(n - 1) + fibonacci(n - 2) }
 }
 
-foreach(0..=10, fn(n) {
+foreach(0..=25, fn(n) {
     print(n);
     print(": ");
     println(fibonacci(n));

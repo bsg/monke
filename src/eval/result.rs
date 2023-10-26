@@ -21,9 +21,9 @@ pub enum Value {
     Str(Rc<str>),
     Fn(FnExpression, NodeRef, EnvRef),
     BuiltIn(BuiltInFn),
-    Array(Rc<RefCell<Vec<Value>>>),
+    Array(Rc<RefCell<Vec<Value>>>), // TODO remove RefCell
     Pair(MapKey, Rc<Value>),
-    Map(Rc<RefCell<HashMap<MapKey, Value>>>),
+    Map(Rc<RefCell<HashMap<MapKey, Value>>>), // TODO remove RefCell
     Range(i64, i64),
 }
 
