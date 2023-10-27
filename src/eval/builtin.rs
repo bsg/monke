@@ -11,6 +11,7 @@ use EvalResult::Return;
 use EvalResult::Val;
 
 use Value::Array;
+use Value::Fn;
 use Value::Int;
 use Value::Nil;
 use Value::Range;
@@ -119,7 +120,7 @@ pub fn tail(args: &mut Vec<Value>) -> EvalResult {
 
 pub fn foreach(args: &mut Vec<Value>) -> EvalResult {
     if args.len() == 2 {
-        if let Value::Fn(f, ast, fnenv) = &args[1] {
+        if let Fn(f, ast, fnenv) = &args[1] {
             match &args[0] {
                 Range(lower, upper) => {
                     for i in *lower..=*upper {
@@ -150,39 +151,32 @@ pub fn foreach(args: &mut Vec<Value>) -> EvalResult {
 }
 pub fn map(args: &mut Vec<Value>) -> EvalResult {
     if args.len() == 2 {
-        if let Value::Fn(f, ast, fnenv) = &args[1] {
-            match &args[0] {
-                Range(lower, upper) => {
-                    let v: Vec<Value> = (*lower..=*upper)
-                        .map(
-                            |i| match Eval::call(f, fnenv.clone(), ast.clone(), &[Int(i)]) {
-                                Val(val) | Return(val) => val,
-                                EvalResult::Err(_) => todo!(),
-                            },
-                        )
-                        .collect();
-
-                    Val(Array(Rc::from(RefCell::new(v))))
-                }
-                Value::Array(arr) => {
-                    let v: Vec<Value> = arr
-                        .borrow()
-                        .iter()
-                        .map(|item| {
-                            match Eval::call(f, fnenv.clone(), ast.clone(), &[item.clone()]) {
-                                Val(val) | Return(val) => val,
-                                EvalResult::Err(_) => todo!(),
-                            }
-                        })
-                        .collect();
-
-                    Val(Array(Rc::from(RefCell::new(v))))
-                }
-                Value::Map(map) => {
+        if let Fn(f, ast, fnenv) = &args[1] {
+            let v: Vec<Value> = match &args[0] {
+                Range(lower, upper) => (*lower..=*upper)
+                    .map(
+                        |i| match Eval::call(f, fnenv.clone(), ast.clone(), &[Int(i)]) {
+                            Val(val) | Return(val) => val,
+                            EvalResult::Err(_) => todo!(),
+                        },
+                    )
+                    .collect(),
+                Value::Array(arr) => arr
+                    .borrow()
+                    .iter()
+                    .map(
+                        |item| match Eval::call(f, fnenv.clone(), ast.clone(), &[item.clone()]) {
+                            Val(val) | Return(val) => val,
+                            EvalResult::Err(_) => todo!(),
+                        },
+                    )
+                    .collect(),
+                Value::Map(_) => {
                     todo!()
                 }
                 _ => todo!(),
-            }
+            };
+            Val(Array(Rc::from(RefCell::new(v))))
         } else {
             todo!()
         }
