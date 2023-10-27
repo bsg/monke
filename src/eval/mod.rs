@@ -53,6 +53,7 @@ impl Eval {
             ("last", builtin::last),
             ("tail", builtin::tail),
             ("foreach", builtin::foreach),
+            ("map", builtin::map),
         ];
 
         for (fn_name, fn_ref) in fns {
@@ -839,5 +840,38 @@ mod tests {
             i
         "#;
         assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
+    }
+
+    #[test]
+    fn eval_map_array() {
+        let code = r#"
+            let arr = [1, 2, 3, 4];
+            map(arr, fn(n){n * n})
+        "#;
+        assert_eq!(
+            Eval::new().eval(code.into()),
+            Val(Array(Rc::from(RefCell::new(vec![
+                Int(1),
+                Int(4),
+                Int(9),
+                Int(16)
+            ]))))
+        );
+    }
+
+    #[test]
+    fn eval_map_range() {
+        let code = r#"
+            map(1..=4, fn(n){n * n})
+        "#;
+        assert_eq!(
+            Eval::new().eval(code.into()),
+            Val(Array(Rc::from(RefCell::new(vec![
+                Int(1),
+                Int(4),
+                Int(9),
+                Int(16)
+            ]))))
+        );
     }
 }

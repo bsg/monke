@@ -148,3 +148,45 @@ pub fn foreach(args: &mut Vec<Value>) -> EvalResult {
         err!("foreach() expected two arguments")
     }
 }
+pub fn map(args: &mut Vec<Value>) -> EvalResult {
+    if args.len() == 2 {
+        if let Value::Fn(f, ast, fnenv) = &args[1] {
+            match &args[0] {
+                Range(lower, upper) => {
+                    let v: Vec<Value> = (*lower..=*upper)
+                        .map(
+                            |i| match Eval::call(f, fnenv.clone(), ast.clone(), &[Int(i)]) {
+                                Val(val) | Return(val) => val,
+                                EvalResult::Err(_) => todo!(),
+                            },
+                        )
+                        .collect();
+
+                    Val(Array(Rc::from(RefCell::new(v))))
+                }
+                Value::Array(arr) => {
+                    let v: Vec<Value> = arr
+                        .borrow()
+                        .iter()
+                        .map(|item| {
+                            match Eval::call(f, fnenv.clone(), ast.clone(), &[item.clone()]) {
+                                Val(val) | Return(val) => val,
+                                EvalResult::Err(_) => todo!(),
+                            }
+                        })
+                        .collect();
+
+                    Val(Array(Rc::from(RefCell::new(v))))
+                }
+                Value::Map(map) => {
+                    todo!()
+                }
+                _ => todo!(),
+            }
+        } else {
+            todo!()
+        }
+    } else {
+        err!("foreach() expected two arguments")
+    }
+}

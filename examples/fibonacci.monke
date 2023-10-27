@@ -18,8 +18,10 @@ let fibonacci_iterative = fn(n) {
     currentNumber
 }
 
-foreach(0..=90, fn(n) {
-    print(n);
-    print(": ");
-    println(fibonacci_iterative(n));
+foreach(0..=100, fn(n) {
+    foreach(0..=90, fn(n) {
+        print(n);
+        print(": ");
+        println(fibonacci_iterative(n));
+    })
 })
