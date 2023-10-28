@@ -717,7 +717,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_index() {
+    fn eval_array_index() {
         let code = r#"
             let a = [1, if(false){2}{5}, 3];
             a[0] + a[1]
@@ -734,7 +734,7 @@ mod tests {
             Val(Array(Rc::from(RefCell::new(vec![Int(1), Int(4), Int(3)]))))
         );
     }
-
+    
     #[test]
     fn array_len() {
         let code = r#"

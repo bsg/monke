@@ -1,3 +1,5 @@
+// TODO debug and display impls are i can't even...
+
 use std::{
     fmt::{self},
     rc::Rc,
@@ -188,7 +190,7 @@ impl fmt::Display for Node {
                     NodeKind::If(_) => "If\n".to_string(),
                     NodeKind::Fn(args) => format!("Fn({})\n", args),
                     NodeKind::Block(_) => "Block\n".to_string(),
-                    NodeKind::Call(_) => "Call ".to_string(),
+                    NodeKind::Call(call) => format!("Call {}\n", call.ident),
                     NodeKind::Array(a) => format!("Array{:?}\n", a),
                     NodeKind::Index(idx) => format!("{:?}\n", idx),
                     NodeKind::Pair(pair) => format!("Pair({:?}, {:?})\n", pair.key, pair.value),
@@ -201,22 +203,18 @@ impl fmt::Display for Node {
             match &node.kind {
                 NodeKind::Block(block) => {
                     for stmt in block.statements.iter() {
-                        if let err @ Err(_) = fmt_with_indent(stmt, f, indent + 1) {
-                            return err;
-                        }
+                        fmt_with_indent(stmt, f, indent + 1)?
                     }
                 }
                 NodeKind::If(c) => {
-                    if let err @ Err(_) = fmt_with_indent(&c.condition, f, indent + 1) {
-                        return err;
-                    }
+                    fmt_with_indent(&c.condition, f, indent + 1)?;
 
-                    if let Some(node) = node.left.as_ref() {
+                    if let Some(node) = &node.left {
                         f.write_fmt(format_args!("{}Then\n", "-".repeat(indent)))?;
                         fmt_with_indent(node, f, indent + 1)?;
                     }
 
-                    if let Some(node) = node.right.as_ref() {
+                    if let Some(node) = &node.right {
                         f.write_fmt(format_args!("{}Else\n", "-".repeat(indent)))?;
                         fmt_with_indent(node, f, indent + 1)?;
                     }
@@ -225,16 +223,8 @@ impl fmt::Display for Node {
                 }
 
                 NodeKind::Call(c) => {
-                    if let Some(rhs) = node.right.as_ref() {
-                        if let NodeKind::Ident(ident) = &rhs.kind {
-                            f.write_fmt(format_args!("{}\n", ident))?;
-                            for arg in c.args.iter() {
-                                if let err @ Err(_) = fmt_with_indent(arg, f, indent + 1) {
-                                    return err;
-                                }
-                            }
-                            return Ok(());
-                        }
+                    for arg in c.args.iter() {
+                        fmt_with_indent(arg, f, indent + 1)?;
                     }
                 }
                 _ => (),
