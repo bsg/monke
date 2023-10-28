@@ -62,7 +62,7 @@ impl Op {
         }
     }
 }
-pub type NodeRef = Option<Rc<Node>>;
+pub type NodeRef = Rc<Node>;
 
 #[derive(Clone, PartialEq)]
 pub struct BlockExpression {
@@ -94,7 +94,7 @@ pub struct CallExpression {
 #[derive(Clone, PartialEq)]
 pub struct IndexExpression {
     pub ident: Rc<str>,
-    pub index: NodeRef, // TODO This is not optional. Also refactor NodeRef to not use Option maybe?
+    pub index: NodeRef,
 }
 
 #[derive(Clone, PartialEq)]
@@ -133,8 +133,8 @@ pub enum NodeKind {
 #[derive(Clone, PartialEq)]
 pub struct Node {
     pub kind: NodeKind,
-    pub left: NodeRef,
-    pub right: NodeRef,
+    pub left: Option<NodeRef>,
+    pub right: Option<NodeRef>,
 }
 
 impl fmt::Debug for NodeKind {
@@ -201,14 +201,15 @@ impl fmt::Display for Node {
             match &node.kind {
                 NodeKind::Block(block) => {
                     for stmt in block.statements.iter() {
-                        stmt.as_ref()
-                            .map(|node| fmt_with_indent(node, f, indent + 1));
+                        if let err @ Err(_) = fmt_with_indent(stmt, f, indent + 1) {
+                            return err;
+                        }
                     }
                 }
                 NodeKind::If(c) => {
-                    c.condition
-                        .as_ref()
-                        .map(|node| fmt_with_indent(node, f, indent + 1));
+                    if let err @ Err(_) = fmt_with_indent(&c.condition, f, indent + 1) {
+                        return err;
+                    }
 
                     if let Some(node) = node.left.as_ref() {
                         f.write_fmt(format_args!("{}Then\n", "-".repeat(indent)))?;
@@ -228,8 +229,9 @@ impl fmt::Display for Node {
                         if let NodeKind::Ident(ident) = &rhs.kind {
                             f.write_fmt(format_args!("{}\n", ident))?;
                             for arg in c.args.iter() {
-                                arg.as_ref()
-                                    .map(|node| fmt_with_indent(node, f, indent + 1));
+                                if let err @ Err(_) = fmt_with_indent(arg, f, indent + 1) {
+                                    return err;
+                                }
                             }
                             return Ok(());
                         }

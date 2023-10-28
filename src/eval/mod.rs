@@ -121,7 +121,7 @@ impl Eval {
         let mut rv = Val(Nil);
 
         match block.statements.first() {
-            Some(Some(node)) => match &node.kind {
+            Some(node) => match &node.kind {
                 NodeKind::Pair(_) => {
                     let mut map: HashMap<MapKey, Value> = HashMap::new();
                     for stmt in block.statements.iter().cloned() {
@@ -155,56 +155,53 @@ impl Eval {
     }
 
     #[inline(always)]
-    fn eval_assign(env: EnvRef, lhs: NodeRef, rhs: NodeRef, is_let: bool) -> EvalResult {
-        match lhs {
-            Some(lhs) => match &lhs.kind {
-                NodeKind::Ident(name) => {
-                    match Self::eval_ast(env.clone(), rhs.clone()) {
-                        Val(val) => {
-                            if is_let {
-                                env.borrow_mut().bind_local(name.clone(), val);
-                            } else {
-                                env.borrow_mut().bind(name.clone(), val);
-                            }
-                            Val(Nil) // TODO return without value
+    fn eval_assign(env: EnvRef, lvalue: NodeRef, rvalue: NodeRef, is_let: bool) -> EvalResult {
+        match &lvalue.kind {
+            NodeKind::Ident(name) => {
+                match Self::eval_ast(env.clone(), rvalue.clone()) {
+                    Val(val) => {
+                        if is_let {
+                            env.borrow_mut().bind_local(name.clone(), val);
+                        } else {
+                            env.borrow_mut().bind(name.clone(), val);
                         }
-                        err @ Err(_) => return err,
+                        Val(Nil) // TODO return without value
+                    }
+                    err @ Err(_) => return err,
+                    _ => todo!(),
+                }
+            }
+            NodeKind::Index(idx) => {
+                if let Val(rval) = Self::eval_ast(env.clone(), rvalue.clone()) {
+                    match env.borrow().get(idx.ident.clone()) {
+                        Some(Array(arr)) => {
+                            let i = match Self::eval_ast(env.clone(), idx.index.clone()) {
+                                Val(Int(i)) => i,
+                                Err(_) => todo!(),
+                                _ => todo!(),
+                            };
+                            arr.borrow_mut()[i as usize] = rval; // FIXME
+                            Val(Nil)
+                        }
+                        Some(Map(map)) => {
+                            let key = match Self::eval_ast(env.clone(), idx.index.clone()) {
+                                Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
+                                Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
+                                Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
+                                Err(_) => todo!(),
+                                _ => todo!(),
+                            };
+                            map.borrow_mut().insert(key, rval);
+                            Val(Nil)
+                        }
+                        None => todo!(),
                         _ => todo!(),
                     }
+                } else {
+                    todo!()
                 }
-                NodeKind::Index(idx) => {
-                    if let Val(rval) = Self::eval_ast(env.clone(), rhs.clone()) {
-                        match env.borrow().get(idx.ident.clone()) {
-                            Some(Array(arr)) => {
-                                let i = match Self::eval_ast(env.clone(), idx.index.clone()) {
-                                    Val(Int(i)) => i,
-                                    Err(_) => todo!(),
-                                    _ => todo!(),
-                                };
-                                arr.borrow_mut()[i as usize] = rval; // FIXME
-                                Val(Nil)
-                            }
-                            Some(Map(map)) => {
-                                let key = match Self::eval_ast(env.clone(), idx.index.clone()) {
-                                    Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
-                                    Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
-                                    Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
-                                    Err(_) => todo!(),
-                                    _ => todo!(),
-                                };
-                                map.borrow_mut().insert(key, rval);
-                                Val(Nil)
-                            }
-                            None => todo!(),
-                            _ => todo!(),
-                        }
-                    } else {
-                        todo!()
-                    }
-                }
-                _ => todo!(),
-            },
-            None => todo!(),
+            }
+            _ => todo!(),
         }
     }
 
@@ -281,117 +278,118 @@ impl Eval {
         }
     }
 
-    fn eval_ast(env: EnvRef, node_ref: NodeRef) -> EvalResult {
-        match node_ref.clone() {
-            Some(node) => match node.kind.clone() {
-                NodeKind::Ident(name) => match env.borrow().get(name.clone()) {
-                    Some(val) => Val(val),
-                    None => err!("Unknown ident {}", name),
-                },
-                NodeKind::Int(i) => Val(Int(i)),
-                NodeKind::Bool(b) => Val(Bool(b)),
-                NodeKind::Str(b) => Val(Str(b)),
-                NodeKind::PrefixOp(op) => match Self::eval_ast(env, node.right.to_owned()) {
-                    err @ Err(_) => err,
-                    Val(val) | Return(val) => Self::eval_prefix(&op, &val),
-                },
-                NodeKind::InfixOp(op) => match op {
-                    Op::Assign => {
-                        Self::eval_assign(env, node.left.to_owned(), node.right.to_owned(), false)
+    fn eval_ast(env: EnvRef, node: NodeRef) -> EvalResult {
+        let lhs = node.left.as_ref().map(|node| node.clone());
+        let rhs = node.right.as_ref().map(|node| node.clone());
+
+        match node.kind.clone() {
+            NodeKind::Ident(name) => match env.borrow().get(name.clone()) {
+                Some(val) => Val(val),
+                None => err!("Unknown ident {}", name),
+            },
+            NodeKind::Int(i) => Val(Int(i)),
+            NodeKind::Bool(b) => Val(Bool(b)),
+            NodeKind::Str(b) => Val(Str(b)),
+            NodeKind::PrefixOp(op) => match Self::eval_ast(env, rhs.unwrap()) {
+                err @ Err(_) => err,
+                Val(val) | Return(val) => Self::eval_prefix(&op, &val),
+            },
+            NodeKind::InfixOp(op) => match op {
+                Op::Assign => Self::eval_assign(env, lhs.unwrap(), rhs.unwrap(), false),
+                _ => {
+                    match (
+                        Self::eval_ast(env.clone(), lhs.unwrap()),
+                        Self::eval_ast(env.clone(), rhs.unwrap()),
+                    ) {
+                        p @ (Err(_), _) => return p.0,
+                        p @ (_, Err(_)) => return p.1,
+                        (lhs, rhs) => Self::eval_infix(&op, &lhs, &rhs),
                     }
-                    _ => {
-                        match (
-                            Self::eval_ast(env.clone(), node.left.to_owned()),
-                            Self::eval_ast(env.clone(), node.right.to_owned()),
-                        ) {
-                            p @ (Err(_), _) => return p.0,
-                            p @ (_, Err(_)) => return p.1,
-                            (lhs, rhs) => Self::eval_infix(&op, &lhs, &rhs),
-                        }
-                    }
-                },
-                NodeKind::Let => {
-                    Self::eval_assign(env, node.left.to_owned(), node.right.to_owned(), true)
                 }
-                NodeKind::Return => match Self::eval_ast(env, node.right.to_owned()) {
-                    Val(val) | Return(val) => Return(val),
-                    err @ Err(_) => err,
-                },
-                NodeKind::If(if_expr) => {
-                    match Self::eval_ast(env.clone(), if_expr.condition.to_owned()) {
-                        Val(val) | Return(val) => match val {
-                            Bool(cond) => {
-                                if cond {
-                                    Self::eval_ast(env, node.left.to_owned())
+            },
+            NodeKind::Let => Self::eval_assign(env, lhs.unwrap(), rhs.unwrap(), true),
+
+            NodeKind::Return => match Self::eval_ast(env, rhs.unwrap()) {
+                Val(val) | Return(val) => Return(val),
+                err @ Err(_) => err,
+            },
+            NodeKind::If(if_expr) => {
+                match Self::eval_ast(env.clone(), if_expr.condition.to_owned()) {
+                    Val(val) | Return(val) => match val {
+                        Bool(cond) => {
+                            if cond {
+                                Self::eval_ast(env, lhs.unwrap())
+                            } else {
+                                if rhs.is_some() {
+                                    Self::eval_ast(env, rhs.unwrap())
                                 } else {
-                                    Self::eval_ast(env, node.right.to_owned())
+                                    EvalResult::Val(Nil)
                                 }
                             }
-                            Nil => err!("expected condition after if"),
-                            _ => Self::eval_ast(env, node.left.to_owned()),
-                        },
-                        err @ Err(_) => err,
-                    }
-                }
-                NodeKind::Block(block) => Self::eval_block(env, &block),
-                NodeKind::Fn(func) => Val(Fn(func, node.right.clone(), Env::from(env))),
-                NodeKind::Call(call) => Self::eval_call(env, &call),
-                NodeKind::Array(nodes) => {
-                    let mut arr: Vec<Value> = Vec::new();
-                    nodes.iter().for_each(|node| {
-                        match Self::eval_ast(env.clone(), Some(node.clone())) {
-                            Val(value) | Return(value) => {
-                                arr.push(value);
-                            }
-                            Err(_) => todo!(),
                         }
+                        Nil => err!("expected condition after if"),
+                        _ => Self::eval_ast(env, lhs.unwrap()),
+                    },
+                    err @ Err(_) => err,
+                }
+            }
+            NodeKind::Block(block) => Self::eval_block(env, &block),
+            NodeKind::Fn(func) => Val(Fn(func, rhs.unwrap(), Env::from(env))),
+            NodeKind::Call(call) => Self::eval_call(env, &call),
+            NodeKind::Array(nodes) => {
+                let mut arr: Vec<Value> = Vec::new();
+                nodes
+                    .iter()
+                    .for_each(|node| match Self::eval_ast(env.clone(), node.clone()) {
+                        Val(value) | Return(value) => {
+                            arr.push(value);
+                        }
+                        Err(_) => todo!(),
                     });
-                    Val(Array(Rc::from(RefCell::new(arr))))
+                Val(Array(Rc::from(RefCell::new(arr))))
+            }
+            NodeKind::Index(idx) => match env.borrow().get(idx.ident) {
+                Some(Array(arr)) => {
+                    let i = match Self::eval_ast(env.clone(), idx.index) {
+                        Val(Int(i)) | Return(Int(i)) => i,
+                        Err(_) => todo!(),
+                        _ => todo!(),
+                    };
+                    Val(arr.borrow()[i as usize].clone())
                 }
-                NodeKind::Index(idx) => match env.borrow().get(idx.ident) {
-                    Some(Array(arr)) => {
-                        let i = match Self::eval_ast(env.clone(), idx.index) {
-                            Val(Int(i)) | Return(Int(i)) => i,
-                            Err(_) => todo!(),
-                            _ => todo!(),
-                        };
-                        Val(arr.borrow()[i as usize].clone())
-                    }
-                    Some(Map(map)) => {
-                        let key = match Self::eval_ast(env.clone(), idx.index) {
-                            Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
-                            Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
-                            Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
-                            Err(_) => todo!(),
-                            _ => todo!(),
-                        };
-                        if let Some(val) = map.borrow().get(&key) {
-                            Val(val.clone())
-                        } else {
-                            Val(Nil)
-                        }
-                    }
-                    None => todo!(),
-                    _ => todo!(),
-                },
-                NodeKind::Pair(pair) => {
-                    let key = match Self::eval_ast(env.clone(), pair.key) {
+                Some(Map(map)) => {
+                    let key = match Self::eval_ast(env.clone(), idx.index) {
                         Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
                         Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
                         Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
                         Err(_) => todo!(),
                         _ => todo!(),
                     };
-                    let value = match Self::eval_ast(env.clone(), pair.value) {
-                        Val(val) | Return(val) => val,
-                        Err(_) => todo!(),
-                    };
-                    Val(Pair(key, Rc::from(value)))
+                    if let Some(val) = map.borrow().get(&key) {
+                        Val(val.clone())
+                    } else {
+                        Val(Nil)
+                    }
                 }
-                NodeKind::Range(range) => Self::eval_range(env, &range, false),
-                NodeKind::RangeInclusive(range) => Self::eval_range(env, &range, true),
+                None => todo!(),
+                _ => todo!(),
             },
-            None => Val(Nil),
+            NodeKind::Pair(pair) => {
+                let key = match Self::eval_ast(env.clone(), pair.key) {
+                    Val(Int(key)) | Return(Int(key)) => MapKey::Int(key),
+                    Val(Bool(key)) | Return(Bool(key)) => MapKey::Bool(key),
+                    Val(Str(key)) | Return(Str(key)) => MapKey::Str(key),
+                    Err(_) => todo!(),
+                    _ => todo!(),
+                };
+                let value = match Self::eval_ast(env.clone(), pair.value) {
+                    Val(val) | Return(val) => val,
+                    Err(_) => todo!(),
+                };
+                Val(Pair(key, Rc::from(value)))
+            }
+            NodeKind::Range(range) => Self::eval_range(env, &range, false),
+            NodeKind::RangeInclusive(range) => Self::eval_range(env, &range, true),
         }
     }
 
@@ -401,7 +399,7 @@ impl Eval {
 
         loop {
             let node = parser.parse_statement();
-            if node.is_some() {
+            if let Some(node) = node {
                 last_result = Self::eval_ast(self.env.clone(), node);
             } else {
                 break;
