@@ -158,7 +158,7 @@ impl Eval {
     fn eval_assign(env: EnvRef, lvalue: NodeRef, rvalue: NodeRef, is_let: bool) -> EvalResult {
         match &lvalue.kind {
             NodeKind::Ident(name) => {
-                match Self::eval_ast(env.clone(), rvalue.clone()) {
+                match Self::eval_ast(env.clone(), rvalue) {
                     Val(val) => {
                         if is_let {
                             env.borrow_mut().bind_local(name.clone(), val);
@@ -172,8 +172,8 @@ impl Eval {
                 }
             }
             NodeKind::Index(idx) => {
-                if let Val(rval) = Self::eval_ast(env.clone(), rvalue.clone()) {
-                    match env.borrow().get(idx.ident.clone()) {
+                if let Val(rval) = Self::eval_ast(env.clone(), rvalue) {
+                    match env.borrow().get(&idx.ident) {
                         Some(Array(arr)) => {
                             let i = match Self::eval_ast(env.clone(), idx.index.clone()) {
                                 Val(Int(i)) => i,
@@ -207,7 +207,7 @@ impl Eval {
 
     #[inline(always)]
     fn eval_call(env: EnvRef, call: &CallExpression) -> EvalResult {
-        match env.borrow().get(call.ident.clone()) {
+        match env.borrow().get(&call.ident) {
             Some(Fn(func, ast, fnenv)) => {
                 let fnenv = Env::from(fnenv);
                 if func.args.len() != call.args.len() {
@@ -283,7 +283,7 @@ impl Eval {
         let rhs = node.right.as_ref().map(|node| node.clone());
 
         match node.kind.clone() {
-            NodeKind::Ident(name) => match env.borrow().get(name.clone()) {
+            NodeKind::Ident(name) => match env.borrow().get(&name) {
                 Some(val) => Val(val),
                 None => err!("Unknown ident {}", name),
             },
@@ -348,7 +348,7 @@ impl Eval {
                     });
                 Val(Array(Rc::from(RefCell::new(arr))))
             }
-            NodeKind::Index(idx) => match env.borrow().get(idx.ident) {
+            NodeKind::Index(idx) => match env.borrow().get(&idx.ident) {
                 Some(Array(arr)) => {
                     let i = match Self::eval_ast(env.clone(), idx.index) {
                         Val(Int(i)) | Return(Int(i)) => i,

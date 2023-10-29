@@ -31,9 +31,8 @@ impl Env {
     }
 
     pub fn bind(&self, name: Rc<str>, val: Value) -> bool {
-        let mut store = self.store.borrow_mut();
-        if store.contains_key(&name) {
-            store.insert(name, val);
+        if let Some(v) = self.store.borrow_mut().get_mut(&name) {
+            *v = val;
             true
         } else {
             match &self.outer {
@@ -43,10 +42,9 @@ impl Env {
         }
     }
 
-    pub fn get(&self, name: Rc<str>) -> Option<Value> {
-        let store = self.store.borrow();
-        if store.contains_key(&name) {
-            store.get(&name).cloned()
+    pub fn get(&self, name: &str) -> Option<Value> {
+        if let v @ Some(_) = self.store.borrow_mut().get(name) {
+            v.cloned()
         } else {
             match &self.outer {
                 Some(outer) => outer.borrow().get(name),
