@@ -253,7 +253,7 @@ impl Eval {
         assert_eq!(func.args.len(), args.len());
 
         {
-            let env = env.borrow_mut();
+            let mut env = env.borrow_mut();
             for (name, arg) in func.args.iter().zip(args.iter()) {
                 env.bind_local(name.clone(), arg.clone());
             }

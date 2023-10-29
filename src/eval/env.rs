@@ -6,48 +6,48 @@ pub type EnvRef = Rc<RefCell<Env>>;
 
 #[derive(PartialEq, Clone)]
 pub struct Env {
-    store: RefCell<BTreeMap<Rc<str>, Value>>,
+    store: BTreeMap<Rc<str>, Value>,
     outer: Option<EnvRef>,
 }
 
 impl Env {
     pub fn new() -> Rc<RefCell<Env>> {
         Rc::new(RefCell::new(Env {
-            store: RefCell::new(BTreeMap::new()),
+            store: BTreeMap::new(),
             outer: None,
         }))
     }
 
     pub fn from(outer: EnvRef) -> EnvRef {
         let env = Env {
-            store: RefCell::new(BTreeMap::new()),
+            store: BTreeMap::new(),
             outer: Some(outer),
         };
         Rc::new(RefCell::new(env))
     }
 
-    pub fn bind_local(&self, name: Rc<str>, val: Value) {
-        self.store.borrow_mut().insert(name, val);
+    pub fn bind_local(&mut self, name: Rc<str>, val: Value) {
+        self.store.insert(name, val);
     }
 
-    pub fn bind(&self, name: Rc<str>, val: Value) -> bool {
-        if let Some(v) = self.store.borrow_mut().get_mut(&name) {
+    pub fn bind(&mut self, name: Rc<str>, val: Value) -> bool {
+        if let Some(v) = self.store.get_mut(&name) {
             *v = val;
             true
         } else {
             match &self.outer {
-                Some(outer) => outer.borrow().bind(name, val),
+                Some(outer) => unsafe { outer.as_ptr().as_mut().unwrap().bind(name, val) },
                 None => false,
             }
         }
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {
-        if let v @ Some(_) = self.store.borrow_mut().get(name) {
+        if let v @ Some(_) = self.store.get(name) {
             v.cloned()
         } else {
             match &self.outer {
-                Some(outer) => outer.borrow().get(name),
+                Some(outer) => unsafe { outer.as_ptr().as_ref().unwrap().get(name) },
                 None => None,
             }
         }
