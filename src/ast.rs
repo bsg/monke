@@ -76,15 +76,9 @@ pub struct IfExpression {
     pub condition: NodeRef,
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 pub struct FnExpression {
     pub args: Rc<[Rc<str>]>,
-}
-
-impl core::cmp::PartialEq for FnExpression {
-    fn eq(&self, _other: &Self) -> bool {
-        false // TODO what do
-    }
 }
 
 #[derive(Clone, PartialEq)]

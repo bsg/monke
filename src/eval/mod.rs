@@ -1,5 +1,4 @@
 // TODO logical and/or should short circuit
-// TODO boi we need some tidying up
 
 mod builtin;
 mod env;
@@ -87,7 +86,7 @@ impl Eval {
                 (Op::Or, Bool(a), Bool(b)) => Val(Bool(*a || *b)),
                 (Op::Add, Str(a), Str(b)) => {
                     let mut s = a.to_string();
-                    s.push_str(&b);
+                    s.push_str(b);
                     Val(Str(Rc::from(s.as_str())))
                 }
                 (_, lhs, rhs) => err!(
@@ -167,7 +166,7 @@ impl Eval {
                         }
                         Val(Nil) // TODO return without value
                     }
-                    err @ Err(_) => return err,
+                    err @ Err(_) => err,
                     _ => todo!(),
                 }
             }
@@ -180,7 +179,7 @@ impl Eval {
                                 Err(_) => todo!(),
                                 _ => todo!(),
                             };
-                            arr.borrow_mut()[i as usize] = rval; // FIXME
+                            arr.borrow_mut()[i as usize] = rval;
                             Val(Nil)
                         }
                         Some(Map(map)) => {
@@ -228,7 +227,7 @@ impl Eval {
                 }
                 match Self::eval_ast(fnenv, ast) {
                     Val(rv) | Return(rv) => Val(rv),
-                    err @ Err(_) => return err,
+                    err @ Err(_) => err,
                 }
             }
             Some(BuiltIn(f)) => {
@@ -279,8 +278,8 @@ impl Eval {
     }
 
     fn eval_ast(env: EnvRef, node: NodeRef) -> EvalResult {
-        let lhs = node.left.as_ref().map(|node| node.clone());
-        let rhs = node.right.as_ref().map(|node| node.clone());
+        let lhs = node.left.as_ref().cloned();
+        let rhs = node.right.as_ref().cloned();
 
         match node.kind.clone() {
             NodeKind::Ident(name) => match env.borrow().get(&name) {
@@ -301,8 +300,8 @@ impl Eval {
                         Self::eval_ast(env.clone(), lhs.unwrap()),
                         Self::eval_ast(env.clone(), rhs.unwrap()),
                     ) {
-                        p @ (Err(_), _) => return p.0,
-                        p @ (_, Err(_)) => return p.1,
+                        p @ (Err(_), _) => p.0,
+                        p @ (_, Err(_)) => p.1,
                         (lhs, rhs) => Self::eval_infix(&op, &lhs, &rhs),
                     }
                 }
@@ -319,12 +318,10 @@ impl Eval {
                         Bool(cond) => {
                             if cond {
                                 Self::eval_ast(env, lhs.unwrap())
+                            } else if let Some(node) = rhs {
+                                Self::eval_ast(env, node)
                             } else {
-                                if rhs.is_some() {
-                                    Self::eval_ast(env, rhs.unwrap())
-                                } else {
-                                    EvalResult::Val(Nil)
-                                }
+                                EvalResult::Val(Nil)
                             }
                         }
                         Nil => err!("expected condition after if"),
@@ -734,7 +731,7 @@ mod tests {
             Val(Array(Rc::from(RefCell::new(vec![Int(1), Int(4), Int(3)]))))
         );
     }
-    
+
     #[test]
     fn array_len() {
         let code = r#"

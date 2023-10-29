@@ -120,7 +120,7 @@ impl Parser {
 
                 self.next_token();
                 assert_eq!(self.curr_token, Some(Token::LBrace));
-                let body = self.parse_block().unwrap(); // FIXME
+                let body = self.parse_block()?;
 
                 Some(node!(
                     NodeKind::Fn(FnExpression {
@@ -145,7 +145,7 @@ impl Parser {
         self.next_token();
         if self.peek_token != Some(Token::RParen) {
             while let Some(node) = self.parse_expression(0) {
-                args.push(node.into());
+                args.push(node);
                 match self.peek_token {
                     Some(Token::Comma) => {
                         self.next_token();
@@ -287,8 +287,6 @@ impl Parser {
     pub fn parse_expression(&mut self, precedence: i32) -> Option<NodeRef> {
         self.next_token();
         let mut lhs = match &self.curr_token {
-            // these are prefix...
-            // INT
             Some(Token::Int(s)) => {
                 let i = match s.parse() {
                     Ok(i) => i,
@@ -297,43 +295,30 @@ impl Parser {
 
                 node!(NodeKind::Int(i), None, None)
             }
-            // STRING
             Some(Token::Str(s)) => node!(NodeKind::Str(s.clone()), None, None),
-            // IDENT
             Some(Token::Ident(_)) => self.parse_ident()?,
-            // TRUE
             Some(Token::True) => node!(NodeKind::Bool(true), None, None),
-            // FALSE
             Some(Token::False) => node!(NodeKind::Bool(false), None, None),
-            // NEG
             Some(Token::Minus) => {
                 node!(NodeKind::PrefixOp(Op::Neg), None, self.parse_expression(0))
             }
-            // NOT
             Some(Token::Bang) => node!(NodeKind::PrefixOp(Op::Not), None, self.parse_expression(0)),
-            // LET
             Some(Token::Let) => self.parse_statement()?,
-            // LPAREN
             Some(Token::LParen) => {
                 let node = self.parse_expression(0)?;
                 assert_eq!(self.peek_token, Some(Token::RParen));
                 self.next_token();
                 node
             }
-            // ARRAY
             Some(Token::LBracket) => self.parse_array()?,
-            // BLOCK
             Some(Token::LBrace) => self.parse_block()?,
-            // FUNCTION
             Some(Token::Fn) => self.parse_fn()?,
-            // IF
             Some(Token::If) => self.parse_if()?,
 
             _ => return None,
         };
 
         loop {
-            // ... and these are infix
             let op = match self.peek_token {
                 Some(Token::Assign) => Some(Op::Assign),
                 Some(Token::Plus) => Some(Op::Add),
@@ -770,7 +755,6 @@ mod tests {
 
     #[test]
     fn if_precedence() {
-        // TODO
         assert_parse!(
             "if(a){1}{2} + if(b){3}{4}",
             "Add\
