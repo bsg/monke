@@ -78,7 +78,7 @@ mod tests {
         let env = Env::new();
         env.borrow_mut().bind_local("x".into(), Int(5));
 
-        assert_eq!(env.borrow().get("x".into()), Some(Int(5)));
+        assert_eq!(env.borrow().get("x"), Some(Int(5)));
     }
 
     #[test]
@@ -89,7 +89,7 @@ mod tests {
 
         let inner = Env::from(outer);
         assert!(inner.borrow_mut().bind("y".into(), Bool(true)));
-        assert_eq!(inner.borrow().get("x".into()), Some(Int(5)));
-        assert_eq!(inner.borrow().get("y".into()), Some(Bool(true)));
+        assert_eq!(inner.borrow().get("x"), Some(Int(5)));
+        assert_eq!(inner.borrow().get("y"), Some(Bool(true)));
     }
 }

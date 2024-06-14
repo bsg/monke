@@ -11,7 +11,7 @@ pub enum MapKey {
     Bool(bool),
 }
 
-pub type BuiltInFn = fn(&mut Vec<Value>) -> EvalResult;
+pub type BuiltInFn = fn(&mut [Value]) -> EvalResult;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Value {

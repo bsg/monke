@@ -17,7 +17,7 @@ use Value::Nil;
 use Value::Range;
 use Value::Str;
 
-pub fn len(args: &mut Vec<Value>) -> EvalResult {
+pub fn len(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         if let Str(s) = &args[0] {
             Return(Int(s.len().try_into().unwrap()))
@@ -31,21 +31,21 @@ pub fn len(args: &mut Vec<Value>) -> EvalResult {
     }
 }
 
-pub fn print(args: &mut Vec<Value>) -> EvalResult {
+pub fn print(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         print!("{}", args[0]);
     }
     Return(Nil)
 }
 
-pub fn println(args: &mut Vec<Value>) -> EvalResult {
+pub fn println(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         println!("{}", args[0]);
     }
     Return(Nil)
 }
 
-pub fn push(args: &mut Vec<Value>) -> EvalResult {
+pub fn push(args: &mut [Value]) -> EvalResult {
     if args.len() == 2 {
         let v = args[1].clone();
         if let Array(ref mut a) = args[0] {
@@ -58,7 +58,7 @@ pub fn push(args: &mut Vec<Value>) -> EvalResult {
         err!("push() expected one argument")
     }
 }
-pub fn pop(args: &mut Vec<Value>) -> EvalResult {
+pub fn pop(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         if let Array(ref mut a) = args[0].clone() {
             match a.borrow_mut().pop() {
@@ -73,7 +73,7 @@ pub fn pop(args: &mut Vec<Value>) -> EvalResult {
     }
 }
 
-pub fn first(args: &mut Vec<Value>) -> EvalResult {
+pub fn first(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         if let Array(ref mut a) = args[0].clone() {
             match a.borrow_mut().first() {
@@ -88,7 +88,7 @@ pub fn first(args: &mut Vec<Value>) -> EvalResult {
     }
 }
 
-pub fn last(args: &mut Vec<Value>) -> EvalResult {
+pub fn last(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         if let Array(ref mut a) = args[0].clone() {
             match a.borrow_mut().last() {
@@ -103,7 +103,7 @@ pub fn last(args: &mut Vec<Value>) -> EvalResult {
     }
 }
 
-pub fn tail(args: &mut Vec<Value>) -> EvalResult {
+pub fn tail(args: &mut [Value]) -> EvalResult {
     if args.len() == 1 {
         if let Array(ref mut a) = args[0].clone() {
             match a.borrow_mut().split_first() {
@@ -118,7 +118,7 @@ pub fn tail(args: &mut Vec<Value>) -> EvalResult {
     }
 }
 
-pub fn foreach(args: &mut Vec<Value>) -> EvalResult {
+pub fn foreach(args: &mut [Value]) -> EvalResult {
     if args.len() == 2 {
         if let Fn(f, ast, fnenv) = &args[1] {
             match &args[0] {
@@ -149,7 +149,7 @@ pub fn foreach(args: &mut Vec<Value>) -> EvalResult {
         err!("foreach() expected two arguments")
     }
 }
-pub fn map(args: &mut Vec<Value>) -> EvalResult {
+pub fn map(args: &mut [Value]) -> EvalResult {
     if args.len() == 2 {
         if let Fn(f, ast, fnenv) = &args[1] {
             let v: Vec<Value> = match &args[0] {

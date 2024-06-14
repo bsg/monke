@@ -514,14 +514,14 @@ mod tests {
             let f = fn(x){x * x};
             f(2);
         ";
-        assert_eq!(ctx.eval(code.into()), Val(Int(4)));
+        assert_eq!(ctx.eval(code), Val(Int(4)));
 
         let code = "
             let g = fn(x, y){x * y}
             g(2, 10);
         ";
-        assert_eq!(ctx.eval(code.into()), Val(Int(20)));
-        assert_eq!(ctx.eval("f(g(2, 10));".into()), Val(Int(400)));
+        assert_eq!(ctx.eval(code), Val(Int(20)));
+        assert_eq!(ctx.eval("f(g(2, 10));"), Val(Int(400)));
     }
 
     #[test]
@@ -538,7 +538,7 @@ mod tests {
             }
         ";
         let ctx = Eval::new();
-        assert_eq!(ctx.eval(code.into()), Val(Int(3)));
+        assert_eq!(ctx.eval(code), Val(Int(3)));
     }
 
     #[test]
@@ -548,10 +548,10 @@ mod tests {
             let x = 1;
             let f = fn(){x = 2};
         ";
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("x".into()), Val(Int(1)));
-        ctx.eval("f()".into());
-        assert_eq!(ctx.eval("x".into()), Val(Int(2)));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("x"), Val(Int(1)));
+        ctx.eval("f()");
+        assert_eq!(ctx.eval("x"), Val(Int(2)));
     }
 
     #[test]
@@ -563,7 +563,7 @@ mod tests {
             let addTwo = newAdder(2);
             addTwo(2);
         ";
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(4)));
+        assert_eq!(Eval::new().eval(code), Val(Int(4)));
     }
 
     #[test]
@@ -574,9 +574,9 @@ mod tests {
             let applyFunc = fn(a, b, func) { func(a, b) };
         ";
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("applyFunc(2, 2, add);".into()), Val(Int(4)));
-        assert_eq!(ctx.eval("applyFunc(4, 2, sub);".into()), Val(Int(2)));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("applyFunc(2, 2, add);"), Val(Int(4)));
+        assert_eq!(ctx.eval("applyFunc(4, 2, sub);"), Val(Int(2)));
     }
 
     #[test]
@@ -585,9 +585,9 @@ mod tests {
             let applyFunc = fn(a, b, func) { func(a, b) };
         ";
         let ctx = Eval::new();
-        ctx.eval(code.into());
+        ctx.eval(code);
         assert_eq!(
-            ctx.eval("applyFunc(2, 2, fn(a, b) { a + b });".into()),
+            ctx.eval("applyFunc(2, 2, fn(a, b) { a + b });"),
             Val(Int(4))
         );
     }
@@ -603,12 +603,12 @@ mod tests {
             }
         ";
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("fibonacci(0)".into()), Val(Int(0)));
-        assert_eq!(ctx.eval("fibonacci(1)".into()), Val(Int(1)));
-        assert_eq!(ctx.eval("fibonacci(2)".into()), Val(Int(1)));
-        assert_eq!(ctx.eval("fibonacci(3)".into()), Val(Int(2)));
-        assert_eq!(ctx.eval("fibonacci(4)".into()), Val(Int(3)));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("fibonacci(0)"), Val(Int(0)));
+        assert_eq!(ctx.eval("fibonacci(1)"), Val(Int(1)));
+        assert_eq!(ctx.eval("fibonacci(2)"), Val(Int(1)));
+        assert_eq!(ctx.eval("fibonacci(3)"), Val(Int(2)));
+        assert_eq!(ctx.eval("fibonacci(4)"), Val(Int(3)));
     }
 
     #[test]
@@ -630,10 +630,10 @@ mod tests {
             }
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("fizzbuzz(15)"), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)"), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)"), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -652,10 +652,10 @@ mod tests {
             }
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("fizzbuzz(15)"), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)"), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)"), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -673,10 +673,10 @@ mod tests {
             }
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("fizzbuzz(15)"), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)"), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)"), Val(Str("buzz".into())));
     }
 
     #[test]
@@ -687,15 +687,15 @@ mod tests {
             }
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("fizzbuzz(15)".into()), Val(Str("fizzbuzz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(3)".into()), Val(Str("fizz".into())));
-        assert_eq!(ctx.eval("fizzbuzz(5)".into()), Val(Str("buzz".into())));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("fizzbuzz(15)"), Val(Str("fizzbuzz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(3)"), Val(Str("fizz".into())));
+        assert_eq!(ctx.eval("fizzbuzz(5)"), Val(Str("buzz".into())));
     }
 
     #[test]
     fn string_len() {
-        assert_eq!(Eval::new().eval(r#"len("asdfg")"#.into()), Val(Int(5)));
+        assert_eq!(Eval::new().eval(r#"len("asdfg")"#), Val(Int(5)));
     }
 
     #[test]
@@ -704,7 +704,7 @@ mod tests {
             [1, 2, false]
         "#;
         assert_eq!(
-            Eval::new().eval(code.into()),
+            Eval::new().eval(code),
             Val(Array(Rc::from(RefCell::new(vec!(
                 Int(1),
                 Int(2),
@@ -719,7 +719,7 @@ mod tests {
             let a = [1, if(false){2}{5}, 3];
             a[0] + a[1]
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(6)));
+        assert_eq!(Eval::new().eval(code), Val(Int(6)));
 
         let code = r#"
             let a = [1, if(false){2}{5}, 3];
@@ -727,7 +727,7 @@ mod tests {
             a
         "#;
         assert_eq!(
-            Eval::new().eval(code.into()),
+            Eval::new().eval(code),
             Val(Array(Rc::from(RefCell::new(vec![Int(1), Int(4), Int(3)]))))
         );
     }
@@ -738,7 +738,7 @@ mod tests {
             let a = [1, 2, 3 ,4];
             len(a)
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(4)));
+        assert_eq!(Eval::new().eval(code), Val(Int(4)));
     }
 
     #[test]
@@ -747,12 +747,12 @@ mod tests {
             let a = [1, 2, 3, 4];
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("len(a)".into()), Val(Int(4)));
-        ctx.eval("push(a, 5)".into());
-        assert_eq!(ctx.eval("len(a)".into()), Val(Int(5)));
-        assert_eq!(ctx.eval("pop(a)".into()), Val(Int(5)));
-        assert_eq!(ctx.eval("len(a)".into()), Val(Int(4)));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("len(a)"), Val(Int(4)));
+        ctx.eval("push(a, 5)");
+        assert_eq!(ctx.eval("len(a)"), Val(Int(5)));
+        assert_eq!(ctx.eval("pop(a)"), Val(Int(5)));
+        assert_eq!(ctx.eval("len(a)"), Val(Int(4)));
     }
 
     #[test]
@@ -761,11 +761,11 @@ mod tests {
             let a = [1, 2, 3, 4];
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval("first(a)".into()), Val(Int(1)));
-        assert_eq!(ctx.eval("last(a)".into()), Val(Int(4)));
+        ctx.eval(code);
+        assert_eq!(ctx.eval("first(a)"), Val(Int(1)));
+        assert_eq!(ctx.eval("last(a)"), Val(Int(4)));
         assert_eq!(
-            ctx.eval("tail(a)".into()),
+            ctx.eval("tail(a)"),
             Val(Array(Rc::from(RefCell::new(vec![Int(2), Int(3), Int(4)]))))
         );
     }
@@ -776,7 +776,7 @@ mod tests {
         map.insert(MapKey::Str(Rc::from("a")), Int(1));
         map.insert(MapKey::Str(Rc::from("b")), Int(2));
         assert_eq!(
-            Eval::new().eval(r#"{"a": 1, "b": 2}"#.into()),
+            Eval::new().eval(r#"{"a": 1, "b": 2}"#),
             Val(Map(Rc::from(RefCell::new(map))))
         );
     }
@@ -787,17 +787,17 @@ mod tests {
             let map = {"a": 1};
         "#;
         let ctx = Eval::new();
-        ctx.eval(code.into());
-        assert_eq!(ctx.eval(r#"map["a"]"#.into()), Val(Int(1)));
-        ctx.eval(r#"map["a"]=2"#.into());
-        assert_eq!(ctx.eval(r#"map["a"]"#.into()), Val(Int(2)));
+        ctx.eval(code);
+        assert_eq!(ctx.eval(r#"map["a"]"#), Val(Int(1)));
+        ctx.eval(r#"map["a"]=2"#);
+        assert_eq!(ctx.eval(r#"map["a"]"#), Val(Int(2)));
     }
 
     #[test]
     fn eval_range() {
-        assert_eq!(Eval::new().eval(r#"{0..10}"#.into()), Val(Range(0, 9)));
+        assert_eq!(Eval::new().eval(r#"{0..10}"#), Val(Range(0, 9)));
 
-        assert_eq!(Eval::new().eval(r#"{0..=10}"#.into()), Val(Range(0, 10)));
+        assert_eq!(Eval::new().eval(r#"{0..=10}"#), Val(Range(0, 10)));
     }
 
     #[test]
@@ -807,14 +807,14 @@ mod tests {
             foreach(1..4, fn(n){i = i + n})
             i
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(6)));
+        assert_eq!(Eval::new().eval(code), Val(Int(6)));
 
         let code = r#"
             let i = 0;
             foreach(1..=4, fn(n){i = i + n})
             i
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
+        assert_eq!(Eval::new().eval(code), Val(Int(10)));
     }
 
     #[test]
@@ -824,7 +824,7 @@ mod tests {
             foreach([1, 2, 3, 4], fn(n){i = i + n})
             i
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
+        assert_eq!(Eval::new().eval(code), Val(Int(10)));
     }
 
     #[test]
@@ -834,7 +834,7 @@ mod tests {
             foreach({1: 2, 3: 4}, fn(k, v){i = i + k + v})
             i
         "#;
-        assert_eq!(Eval::new().eval(code.into()), Val(Int(10)));
+        assert_eq!(Eval::new().eval(code), Val(Int(10)));
     }
 
     #[test]
@@ -844,7 +844,7 @@ mod tests {
             map(arr, fn(n){n * n})
         "#;
         assert_eq!(
-            Eval::new().eval(code.into()),
+            Eval::new().eval(code),
             Val(Array(Rc::from(RefCell::new(vec![
                 Int(1),
                 Int(4),
@@ -860,7 +860,7 @@ mod tests {
             map(1..=4, fn(n){n * n})
         "#;
         assert_eq!(
-            Eval::new().eval(code.into()),
+            Eval::new().eval(code),
             Val(Array(Rc::from(RefCell::new(vec![
                 Int(1),
                 Int(4),
